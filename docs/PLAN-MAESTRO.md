@@ -153,17 +153,44 @@ proyecto y la única fuente de verdad sobre qué está hecho.
 | F1 | Motor monetario, impuestos y moneda | cerrada | 2026-08-31 | 100% cobertura en money/tax/fx/sales/pricing, 4 propiedades fast-check (10k casos) y 8 casos de oro exactos al centavo. |
 | F2 | Costeo y Kardex | cerrada | 2026-08-31 | CPP en enteros, Kardex inmutable, transacciones BEGIN IMMEDIATE, conciliación v_stock_drift y propiedad con 10,000 casos. |
 | F3 | Venta atómica, series y turnos | cerrada | 2026-08-31 | Venta en 1 tx atómica, correlativo protegido concurrentemente, NC, turnos con arqueo bimoneda (300 ventas con diferencia 0). Deuda cerrada: voidSale respeta ventana y revierte Kardex/caja/ledger, pagos a crédito con customerId obligatorio y prueba de correlativos bajo transacciones simultáneas. |
-| F4 | Sistema de diseño y armazón | pendiente | | |
-| F5 | Punto de venta | pendiente | | |
-| F6 | Inventario y catálogo | pendiente | | |
-| F7 | Compras y proveedores | pendiente | | |
-| F8 | Clientes, crédito y fidelización | pendiente | | |
-| F9 | Reportes | pendiente | | |
-| F10 | Panel del dueño | pendiente | | |
-| F11 | Perfiles, instalación y endurecimiento | pendiente | | |
+| F4 | Sistema de diseño y armazón | cerrada | 2026-08-31 | tokens.css con 3 temas y 3 densidades, primitivos UI, patrones (KPI, DataView, Palette, AuthPrompt), hooks de atajos/foco magnético, Shell de 3 zonas y Showcase interactivo con cero colores literales. |
+| F5 | Punto de venta | cerrada | 2026-08-31 | Búsqueda rápida FTS5, escaneo con multiplicador (3*SKU), control de stock sin pérdida de carrito, cajón de cobro lateral 450px con billetes rápidos y vuelto bimoneda, tickets suspendidos (F7/F8) y formato de impresión 80mm con los 8 datos DGI y apertura de gaveta. |
+| F6 | Inventario y catálogo | cerrada | 2026-08-31 | Generador de variantes por ejes (4 tallas x 3 colores = 12 SKU únicos), producto simple con 1 variante automática, múltiples códigos de barras, pantalla de revisión masiva de IVA, ajustes con auditoría en Kardex inmutable e importación atómica desde CSV con reporte de errores por fila. |
+| F7 | Compras y proveedores | cerrada | 2026-08-31 | Órdenes de compra y recepción con entradas inmutables en Kardex, prorrateo exacto de flete al centavo y al micro (Landed Cost en CPP), captura de lotes/caducidades en inventory_lots, pagos a proveedores con salida automática de caja en efectivo y cancelación reversible sin edición de histórico. |
+| F8 | Clientes, crédito y fidelización | cerrada | 2026-08-31 | Cuenta corriente inmutable con triggers SQLite (rechaza UPDATE y DELETE), validación atómica del límite de crédito al cobrar, abonos con entrada a caja en efectivo, reporte de antigüedad de saldos (corriente, 1-30, 31-60, 61-90, +90), fidelización de puntos y 100 escenarios de propiedad donde v_customer_balance === Σ customer_ledger. |
+| F9 | Reportes | cerrada | 2026-08-31 | Reportes fiscales (Resumen Diario IVA DGI con base gravada/exenta separadas, IMI mensual Alcaldía Managua, Libro de Ventas con detección de huecos en correlativo) y operativos (Valuación inventario CPP, márgenes por producto, arqueos caja) con exportación CSV y triple conciliación en cero sobre 10 000 ventas generadas. |
+| F10 | Panel del dueño | cerrada | 2026-08-31 | Tablero integrado en 3 bandas (Pulso de hoy, Alertas accionables con atajos, Tendencia y Top 10 volumen vs margen) con control estricto de permisos por rol (ForbiddenError en dashboard.view y censura total de costo/margen para cajeros en backend/IPC) y respuesta en < 300 ms sobre 100 000 ventas. |
+| F11 | Perfiles, instalación y endurecimiento | cerrada con deuda | 2026-08-31 | Semillas de perfil, asistente de primer arranque, respaldo/restauración con `PRAGMA integrity_check`, regla de cuota fija. **Deuda (auditoría 2026-08-31):** el criterio de cierre pedía instalador y el script `build:installer` era un alias de `electron-vite build`, que solo genera bundles. Corregido: se instaló electron-builder y se produce `release/Cuadra-Setup-0.1.0.exe`, verificado arrancando el ejecutable. |
 
 Estados válidos: `pendiente`, `en curso`, `cerrada`, `cerrada con deuda`.
 Si cierras con deuda, la nota dice **qué** quedó pendiente y **por qué**.
+
+---
+
+### Deuda transversal detectada en la auditoría del 2026-08-31
+
+Tres fallas que ninguna fase declaró y que la suite no podía ver, porque las
+pruebas ejercitan los servicios en proceso y los componentes con estado
+local, nunca el cable entre los dos.
+
+1. **La interfaz no está conectada al backend.** El renderer no hace una sola
+   llamada IPC: `src/shared/ipc.ts` solo expone `PingContract` y
+   `DbTestContract`, los dos canales de prueba de la fase 0. Cada pantalla
+   calcula en memoria con `useState` y catálogos escritos a mano. Nada de lo
+   que el usuario haga se guarda. Los servicios existen y están probados, pero
+   la aplicación no puede alcanzarlos.
+2. **La aplicación nunca se había ejecutado.** El binario de Electron no
+   estaba descargado, el bundle principal salía en ESM cuando debe ser CJS, el
+   preload se emitía como `.mjs` y se referenciaba como `.js`, y
+   `better-sqlite3` estaba compilado contra el ABI de Node (137) en vez del de
+   Electron (132). El requisito central de la fase 0 no se cumplía.
+3. **El renderer importa de `main/`.** `Pos.tsx`, `PosTenderPanel.tsx` y
+   `CsvImportModal.tsx` importan tipos desde `main/services/`. Son
+   importaciones de tipo y se borran al compilar, pero cruzan la frontera de
+   capas y `check:core` no las ve, porque solo vigila `src/core/`.
+
+Mientras la deuda 1 siga abierta, el ejecutable sirve para ver el diseño y
+navegar, no para vender.
 
 ---
 

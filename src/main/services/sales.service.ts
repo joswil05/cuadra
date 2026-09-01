@@ -11,7 +11,7 @@ export interface CreateSaleLineInput {
   description: string;
   unitPriceCents: bigint;
   qtyMilli: bigint;
-  lineDiscountCents: bigint;
+  lineDiscountCents?: bigint;
   taxKind: TaxKind;
   taxRateBp: bigint;
   lotId?: number;
@@ -22,7 +22,7 @@ export interface SalePaymentInput {
   currencyCode: 'NIO' | 'USD';
   amountFx: bigint;
   fxRateMicros: bigint;
-  amountCents: bigint;
+  amountCents?: bigint;
   reference?: string;
 }
 
@@ -173,7 +173,7 @@ export function createSale(db: Database.Database, input: CreateSaleInput): Creat
         description: l.description,
         unitPriceCents: l.unitPriceCents,
         qtyMilli: l.qtyMilli,
-        lineDiscountCents: l.lineDiscountCents,
+        lineDiscountCents: l.lineDiscountCents ?? 0n,
         taxKind: l.taxKind,
         taxRateBp: l.taxRateBp
       })),
@@ -188,10 +188,11 @@ export function createSale(db: Database.Database, input: CreateSaleInput): Creat
     let creditPaymentsCents = 0n;
 
     for (const p of input.payments) {
+      const pCents = p.amountCents ?? (p.currencyCode === 'USD' ? mulDiv(p.amountFx, p.fxRateMicros, 1_000_000n) : p.amountFx);
       if (p.method === 'credit') {
-        creditPaymentsCents += p.amountCents;
+        creditPaymentsCents += pCents;
       } else {
-        nonCreditPaidCents += p.amountCents;
+        nonCreditPaidCents += pCents;
       }
     }
 
@@ -345,13 +346,15 @@ export function createSale(db: Database.Database, input: CreateSaleInput): Creat
     `);
 
     for (const p of input.payments) {
+      const pAmountCents = p.amountCents ?? (p.currencyCode === 'USD' ? mulDiv(p.amountFx, p.fxRateMicros, 1_000_000n) : p.amountFx);
+
       insertPayment.run(
         saleId,
         p.method,
         p.currencyCode,
         Number(p.amountFx),
         Number(p.fxRateMicros),
-        Number(p.amountCents),
+        Number(pAmountCents),
         p.reference ?? null
       );
 
@@ -367,7 +370,7 @@ export function createSale(db: Database.Database, input: CreateSaleInput): Creat
           p.currencyCode,
           Number(p.amountFx),
           Number(p.fxRateMicros),
-          Number(p.amountCents),
+          Number(pAmountCents),
           saleId,
           input.userId,
           `Pago de venta ${folio}`

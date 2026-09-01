@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "ERP y Punto de Venta para MiPyMEs de Nicaragua",
-  "main": "./out/main/index.js",
+  "main": "./out/main/index.cjs",
   "author": "Cuadra",
   "homepage": "https://cuadra.ni",
   "scripts": {
@@ -11,13 +11,19 @@
     "build": "electron-vite build",
     "postinstall": "electron-rebuild",
     "test": "vitest run",
+    "test:e2e": "vitest run test/e2e",
     "test:watch": "vitest",
     "lint": "eslint .",
     "check:core": "node scripts/check-core.mjs",
     "check:tokens": "node scripts/check-tokens.mjs",
     "cli": "tsx scripts/cli.ts",
     "typecheck": "tsc --noEmit",
-    "rebuild": "electron-rebuild -f -w better-sqlite3"
+    "build:installer": "electron-vite build && electron-builder --win && npm run rebuild:node",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "build:dir": "electron-vite build && electron-builder --win --dir && npm run rebuild:node",
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "rebuild:electron": "electron-builder install-app-deps",
+    "start": "electron-vite preview"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
@@ -37,6 +43,7 @@
     "@vitest/coverage-v8": "^3.2.7",
     "autoprefixer": "^10.4.20",
     "electron": "^34.2.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^3.1.0",
     "eslint": "^9.21.0",
     "fast-check": "^4.9.0",
@@ -46,5 +53,43 @@
     "typescript": "^5.7.3",
     "vite": "^6.2.0",
     "vitest": "^3.0.6"
+  },
+  "build": {
+    "appId": "ni.cuadra.pos",
+    "productName": "Cuadra",
+    "copyright": "Cuadra",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "db/migrations/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "**/node_modules/better-sqlite3/**"
+    ],
+    "npmRebuild": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Cuadra-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cuadra",
+      "artifactName": "Cuadra-Setup-${version}.${ext}"
+    }
   }
 }

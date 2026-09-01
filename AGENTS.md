@@ -98,3 +98,22 @@ npm run lint          # estilo y reglas
 npm run check:core    # core/ no importa infraestructura
 npm run check:tokens  # renderer/ no tiene colores literales
 ```
+
+## Módulo nativo: los dos ABI de better-sqlite3
+
+`better-sqlite3` es un binario compilado y Node y Electron usan ABI distintos
+(hoy 137 contra 132). Un solo `node_modules` no puede servir a los dos a la
+vez, así que el proyecto alterna a propósito:
+
+| Para | Comando | Deja el ABI en |
+|---|---|---|
+| Correr las pruebas | `npm run rebuild:node` | Node |
+| Correr la app en desarrollo | `npm run rebuild:electron` | Electron |
+| Generar el instalador | `npm run build:installer` | Node (lo restaura solo al terminar) |
+
+Si aparece `NODE_MODULE_VERSION 132 ... requires 137`, no es un bug: es el ABI
+cambiado. Corre el comando de la fila que corresponda.
+
+`build:installer` produce `release/Cuadra-Setup-<version>.exe` y **termina
+devolviendo el ABI de Node**, para que la suite siga corriendo sin pasos
+manuales.

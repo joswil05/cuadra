@@ -1,4 +1,9 @@
-:root {
+/* =============================================================================
+   Cuadra Design System — Tokens
+   ============================================================================= */
+
+:root,
+[data-theme="light"] {
   /* Modo Claro */
   --bg: #FAFAFA;
   --surface: #FFFFFF;
@@ -17,11 +22,13 @@
   --warning: #B45309;
   --danger: #B91C1C;
   --info: #0E7490;
+
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Modo Oscuro */
+    /* Modo Oscuro por Sistema */
     --bg: #0B0B0E;
     --surface: #141418;
     --surface-2: #1C1C22;
@@ -39,5 +46,92 @@
     --warning: #FBBF24;
     --danger: #F87171;
     --info: #38BDF8;
+
+    color-scheme: dark;
+  }
+}
+
+[data-theme="dark"],
+html.dark {
+  /* Modo Oscuro Explícito */
+  --bg: #0B0B0E;
+  --surface: #141418;
+  --surface-2: #1C1C22;
+  --surface-3: #26262E;
+  --border: #2A2A33;
+  --border-strong: #3A3A46;
+  --text-1: #F4F4F5;
+  --text-2: #A1A1AA;
+  --text-3: #6B6B76;
+  --accent: #6E9BFF;
+  --accent-hover: #87ADFF;
+  --accent-soft: #151E33;
+  --accent-border: #2A3A5C;
+  --success: #4ADE80;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --info: #38BDF8;
+
+  color-scheme: dark;
+}
+
+/* =============================================================================
+   Densidades
+   ============================================================================= */
+
+:root,
+[data-density="comfortable"] {
+  --row-height: 34px;
+  --cell-padding-y: 8px;
+  --cell-padding-x: 12px;
+  --control-height: 34px;
+  --control-padding-y: 6px;
+  --control-padding-x: 12px;
+}
+
+[data-density="compact"] {
+  --row-height: 28px;
+  --cell-padding-y: 4px;
+  --cell-padding-x: 8px;
+  --control-height: 28px;
+  --control-padding-y: 3px;
+  --control-padding-x: 8px;
+}
+
+[data-density="spacious"] {
+  --row-height: 42px;
+  --cell-padding-y: 12px;
+  --cell-padding-x: 16px;
+  --control-height: 42px;
+  --control-padding-y: 10px;
+  --control-padding-x: 16px;
+}
+
+/* =============================================================================
+   Radios y Movimiento
+   ============================================================================= */
+
+:root {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 240ms;
+  --duration-exit: 160ms;
+
+  --ease-in-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+    --duration-exit: 0ms;
   }
 }

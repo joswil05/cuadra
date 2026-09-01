@@ -49,6 +49,8 @@ export interface CalculatedSaleDocument {
   totalCents: bigint;
 }
 
+export type SaleDocument = CalculatedSaleDocument;
+
 /**
  * Calcula un documento de venta completo cuadrado al centavo.
  * Aplica el orden de operaciones estricto de AGENT-GUIDE.md.
