@@ -117,3 +117,24 @@ cambiado. Corre el comando de la fila que corresponda.
 `build:installer` produce `release/Cuadra-Setup-<version>.exe` y **termina
 devolviendo el ABI de Node**, para que la suite siga corriendo sin pasos
 manuales.
+
+## Cómo se conecta una pantalla al backend
+
+El renderer **nunca** ve SQL ni la conexión. Para agregar una operación:
+
+1. Define el contrato en `src/shared/ipc.ts` con `define(canal, entrada, salida)`.
+   La **entrada se valida de verdad** con Zod: es la frontera de confianza.
+   La salida usa `out<T>()`, que tipa sin costo en tiempo de ejecución.
+2. Regístralo en `src/main/ipc/handlers.ts` llamando al servicio ya probado.
+3. Consúmelo desde la pantalla con `useIpcQuery(...)` para leer o `call(...)`
+   para escribir, y `reload()` después de mutar.
+
+`BigInt` cruza el puente intacto, así que el dinero sigue siendo entero de la
+base a la pantalla. No lo conviertas a `number` ni a texto para pasarlo.
+
+`npm run check:layers` falla si el renderer importa de `main/` o si una
+pantalla no habla por IPC. Una pantalla que solo usa `useState` se ve
+terminada y no guarda nada: ese fue el fallo que sobrevivió once fases.
+
+**Si una acción todavía no tiene canal, dilo en la interfaz.** No muestres un
+mensaje de éxito por algo que no se guardó.

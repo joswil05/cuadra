@@ -1,3 +1,5 @@
+import { SuppliersListContract, PurchasesListContract } from '../../../shared/ipc';
+import { useIpcQuery } from '../hooks/useIpc';
 import { useState, useMemo } from 'react';
 import { DataView } from '../components/patterns/DataView';
 import { KpiCard } from '../components/patterns/KpiCard';
@@ -78,9 +80,21 @@ const INITIAL_PURCHASES: PurchaseSummary[] = [
 ];
 
 export function Purchases() {
-  const { success } = useToast();
-  const [suppliers, setSuppliers] = useState<SupplierItem[]>(INITIAL_SUPPLIERS);
-  const [purchases, setPurchases] = useState<PurchaseSummary[]>(INITIAL_PURCHASES);
+  const { success, info } = useToast();
+  const suppliersQuery = useIpcQuery(
+    SuppliersListContract,
+    undefined,
+    INITIAL_SUPPLIERS as unknown as never
+  );
+  const suppliers = (suppliersQuery.data ?? INITIAL_SUPPLIERS) as unknown as SupplierItem[];
+  const reloadSuppliers = suppliersQuery.reload;
+  const purchasesQuery = useIpcQuery(
+    PurchasesListContract,
+    undefined,
+    INITIAL_PURCHASES as unknown as never
+  );
+  const purchases = (purchasesQuery.data ?? INITIAL_PURCHASES) as unknown as PurchaseSummary[];
+  const reloadPurchases = purchasesQuery.reload;
   const [searchQuery, setSearchQuery] = useState('');
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
@@ -115,7 +129,7 @@ export function Purchases() {
       address: data.address || null,
       creditDays: data.creditDays
     };
-    setSuppliers((prev) => [...prev, newSupp]);
+    void reloadSuppliers();
     success('Proveedor registrado', newSupp.name);
   };
 
@@ -149,34 +163,24 @@ export function Purchases() {
       note: params.note || null
     };
 
-    setPurchases((prev) => [newPurch, ...prev]);
+    void reloadPurchases();
     success('Orden de compra creada', newPurch.folio);
   };
 
   const handleReceivePurchase = (purchaseId: number) => {
-    setPurchases((prev) =>
-      prev.map((p) => (p.id === purchaseId ? { ...p, status: 'received', receivedAt: new Date().toISOString() } : p))
-    );
-    success('Mercancía recibida en Kardex y CPP actualizado');
+    info('Recepción pendiente de conectar', `Falta el canal purchases:receive (orden ${purchaseId}).`);
   };
 
   const handleCancelReception = (purchaseId: number) => {
-    setPurchases((prev) =>
-      prev.map((p) => (p.id === purchaseId ? { ...p, status: 'cancelled' } : p))
-    );
-    success('Recepción cancelada con movimiento inverso de Kardex');
+    info('Cancelación pendiente de conectar', `Falta el canal purchases:cancel (orden ${purchaseId}).`);
   };
 
   const handleSavePayment = (params: PaySupplierParams) => {
-    setPurchases((prev) =>
-      prev.map((p) => {
-        if (p.id === params.purchaseId) {
-          return { ...p, paidCents: p.paidCents + params.amountCents };
-        }
-        return p;
-      })
+    // El pago a proveedor todavia no tiene canal IPC: no se finge exito.
+    info(
+      'Pago a proveedor pendiente de conectar',
+      `Falta el canal purchases:pay para el proveedor ${params.purchaseId}.`
     );
-    success('Pago a proveedor registrado');
   };
 
   const tableViewNode = (

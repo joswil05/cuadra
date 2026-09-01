@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { ImportCsvError } from '../../../../main/services/catalog.service';
+import { ImportCsvError } from '../../../../shared/ipc';
 
 export interface CsvImportModalProps {
   isOpen: boolean;

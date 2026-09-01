@@ -12,6 +12,15 @@ import {
   ReportsReconciliation,
   formatReportCsv
 } from '../../../core/reports';
+import {
+  ReportDailyTaxContract,
+  ReportMonthlyIncomeContract,
+  ReportInventoryContract,
+  ReportMarginsContract,
+  ReportSalesBookContract,
+  ReportCashDiscrepanciesContract
+} from '../../../shared/ipc';
+import { useIpcQuery } from '../hooks/useIpc';
 
 type ReportTab = 'fiscal' | 'inventory' | 'margins' | 'cash' | 'reconciliation';
 
@@ -19,7 +28,7 @@ export function Reports() {
   const [activeTab, setActiveTab] = useState<ReportTab>('fiscal');
 
   // Datos mock / demostrativos en renderer
-  const [dailyTaxRows] = useState<DailyTaxSummaryRow[]>([
+  const MUESTRA_dailyTaxRows: DailyTaxSummaryRow[] = ([
     {
       day: '2026-08-31',
       docType: 'ticket',
@@ -42,13 +51,13 @@ export function Reports() {
     }
   ]);
 
-  const [monthlyGross] = useState<MonthlyGrossIncomeRow[]>([
+  const MUESTRA_monthlyGross: MonthlyGrossIncomeRow[] = ([
     { period: '2026-06', grossCents: 45000000n }, // C$ 450,000.00
     { period: '2026-07', grossCents: 52000000n }, // C$ 520,000.00
     { period: '2026-08', grossCents: 61500000n }  // C$ 615,000.00
   ]);
 
-  const [salesBook] = useState<SalesBookEntry[]>([
+  const MUESTRA_salesBook: SalesBookEntry[] = ([
     {
       id: 1,
       series: 'A',
@@ -81,7 +90,7 @@ export function Reports() {
     }
   ]);
 
-  const [inventoryValuation] = useState<InventoryValuationRow[]>([
+  const MUESTRA_inventoryValuation: InventoryValuationRow[] = ([
     {
       variantId: 1,
       sku: 'CAF-PRE-150',
@@ -102,7 +111,7 @@ export function Reports() {
     }
   ]);
 
-  const [profitMargins] = useState<ProfitMarginRow[]>([
+  const MUESTRA_profitMargins: ProfitMarginRow[] = ([
     {
       variantId: 1,
       sku: 'CAF-PRE-150',
@@ -127,7 +136,7 @@ export function Reports() {
     }
   ]);
 
-  const [cashDiscrepancies] = useState<CashDiscrepancyRow[]>([
+  const MUESTRA_cashDiscrepancies: CashDiscrepancyRow[] = ([
     {
       shiftId: 1,
       folio: 'TUR-000001',
@@ -150,6 +159,22 @@ export function Reports() {
   });
 
   // KPIs
+  // Reportes reales desde SQLite; cada uno cae a su muestra sin puente IPC.
+  const q_dailyTaxRows = useIpcQuery(ReportDailyTaxContract, {});
+  const dailyTaxRows = (q_dailyTaxRows.data ?? MUESTRA_dailyTaxRows) as typeof MUESTRA_dailyTaxRows;
+  const q_monthlyGross = useIpcQuery(ReportMonthlyIncomeContract, {});
+  const monthlyGross = (q_monthlyGross.data ?? MUESTRA_monthlyGross) as typeof MUESTRA_monthlyGross;
+  const q_inventoryValuation = useIpcQuery(ReportInventoryContract, undefined);
+  const inventoryValuation = (q_inventoryValuation.data ?? MUESTRA_inventoryValuation) as typeof MUESTRA_inventoryValuation;
+  const q_profitMargins = useIpcQuery(ReportMarginsContract, {});
+  const profitMargins = (q_profitMargins.data ?? MUESTRA_profitMargins) as typeof MUESTRA_profitMargins;
+  const q_salesBook = useIpcQuery(ReportSalesBookContract, {});
+  const salesBook = ((q_salesBook.data as { entries?: typeof MUESTRA_salesBook } | null)?.entries ??
+    MUESTRA_salesBook) as typeof MUESTRA_salesBook;
+  const q_cashDiscrepancies = useIpcQuery(ReportCashDiscrepanciesContract, undefined);
+  const cashDiscrepancies = (q_cashDiscrepancies.data ??
+    MUESTRA_cashDiscrepancies) as typeof MUESTRA_cashDiscrepancies;
+
   const totalValuation = useMemo(() => {
     return inventoryValuation.reduce((acc, r) => acc + r.totalValuationCents, 0n);
   }, [inventoryValuation]);
@@ -159,7 +184,9 @@ export function Reports() {
   }, [monthlyGross]);
 
   const handleExportCsv = (title: string, headers: string[], rows: (string | number | bigint | null | undefined)[][]) => {
-    const csvContent = formatReportCsv(headers, rows);
+  
+
+  const csvContent = formatReportCsv(headers, rows);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

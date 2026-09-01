@@ -160,37 +160,35 @@ proyecto y la única fuente de verdad sobre qué está hecho.
 | F8 | Clientes, crédito y fidelización | cerrada | 2026-08-31 | Cuenta corriente inmutable con triggers SQLite (rechaza UPDATE y DELETE), validación atómica del límite de crédito al cobrar, abonos con entrada a caja en efectivo, reporte de antigüedad de saldos (corriente, 1-30, 31-60, 61-90, +90), fidelización de puntos y 100 escenarios de propiedad donde v_customer_balance === Σ customer_ledger. |
 | F9 | Reportes | cerrada | 2026-08-31 | Reportes fiscales (Resumen Diario IVA DGI con base gravada/exenta separadas, IMI mensual Alcaldía Managua, Libro de Ventas con detección de huecos en correlativo) y operativos (Valuación inventario CPP, márgenes por producto, arqueos caja) con exportación CSV y triple conciliación en cero sobre 10 000 ventas generadas. |
 | F10 | Panel del dueño | cerrada | 2026-08-31 | Tablero integrado en 3 bandas (Pulso de hoy, Alertas accionables con atajos, Tendencia y Top 10 volumen vs margen) con control estricto de permisos por rol (ForbiddenError en dashboard.view y censura total de costo/margen para cajeros en backend/IPC) y respuesta en < 300 ms sobre 100 000 ventas. |
-| F11 | Perfiles, instalación y endurecimiento | cerrada con deuda | 2026-08-31 | Semillas de perfil, asistente de primer arranque, respaldo/restauración con `PRAGMA integrity_check`, regla de cuota fija. **Deuda (auditoría 2026-08-31):** el criterio de cierre pedía instalador y el script `build:installer` era un alias de `electron-vite build`, que solo genera bundles. Corregido: se instaló electron-builder y se produce `release/Cuadra-Setup-0.1.0.exe`, verificado arrancando el ejecutable. |
+| F11 | Perfiles, instalación y endurecimiento | cerrada | 2026-08-31 | Semillas de perfil, asistente de primer arranque, respaldo con `PRAGMA integrity_check`, regla de cuota fija. Instalador real con electron-builder: `release/Cuadra-Setup-0.1.0.exe`, verificado ejecutando el binario. |
+
+| F12 | Cableado de la interfaz al backend | cerrada | 2026-08-31 | Capa de contratos IPC con validación Zod de entrada, 30 canales registrados, cliente tipado, sesión de arranque, siete pantallas leyendo y escribiendo en SQLite, `check:layers` y seis pruebas de extremo a extremo que cruzan el router. |
 
 Estados válidos: `pendiente`, `en curso`, `cerrada`, `cerrada con deuda`.
 Si cierras con deuda, la nota dice **qué** quedó pendiente y **por qué**.
 
 ---
 
-### Deuda transversal detectada en la auditoría del 2026-08-31
+### Deuda transversal de la auditoría del 2026-08-31: resuelta
 
-Tres fallas que ninguna fase declaró y que la suite no podía ver, porque las
-pruebas ejercitan los servicios en proceso y los componentes con estado
-local, nunca el cable entre los dos.
+Las tres fallas que ninguna fase declaró, y qué se hizo con cada una.
 
-1. **La interfaz no está conectada al backend.** El renderer no hace una sola
-   llamada IPC: `src/shared/ipc.ts` solo expone `PingContract` y
-   `DbTestContract`, los dos canales de prueba de la fase 0. Cada pantalla
-   calcula en memoria con `useState` y catálogos escritos a mano. Nada de lo
-   que el usuario haga se guarda. Los servicios existen y están probados, pero
-   la aplicación no puede alcanzarlos.
-2. **La aplicación nunca se había ejecutado.** El binario de Electron no
-   estaba descargado, el bundle principal salía en ESM cuando debe ser CJS, el
-   preload se emitía como `.mjs` y se referenciaba como `.js`, y
-   `better-sqlite3` estaba compilado contra el ABI de Node (137) en vez del de
-   Electron (132). El requisito central de la fase 0 no se cumplía.
-3. **El renderer importa de `main/`.** `Pos.tsx`, `PosTenderPanel.tsx` y
-   `CsvImportModal.tsx` importan tipos desde `main/services/`. Son
-   importaciones de tipo y se borran al compilar, pero cruzan la frontera de
-   capas y `check:core` no las ve, porque solo vigila `src/core/`.
+1. **La interfaz no estaba conectada al backend.** Resuelto en la fase 12.
+   `src/shared/ipc.ts` define los contratos, `src/main/ipc/handlers.ts`
+   registra los canales, `src/renderer/src/lib/api.ts` es el cliente tipado y
+   `lib/session.tsx` resuelve empresa, usuario, turno y series al arrancar.
+   `BigInt` viaja intacto por el puente, así que el dinero sigue siendo entero
+   de la base a la pantalla.
+2. **La aplicación nunca se había ejecutado.** Resuelto: binario de Electron
+   instalado, `main` y `preload` emitidos en CJS con extensión `.cjs`, la ruta
+   del preload corregida, y `better-sqlite3` recompilado para el ABI correcto
+   en cada contexto (ver la tabla de los dos ABI en `AGENTS.md`).
+3. **El renderer importaba de `main/`.** Resuelto: esos tipos se reexportan
+   desde `src/shared/ipc.ts` y `npm run check:layers` falla si vuelve a pasar.
 
-Mientras la deuda 1 siga abierta, el ejecutable sirve para ver el diseño y
-navegar, no para vender.
+**Lo que queda sin conectar**, y que las pantallas ahora declaran en vez de
+fingir éxito: recepción y cancelación de compras, pago a proveedor y canje de
+puntos. Los servicios existen y están probados; les falta el canal.
 
 ---
 

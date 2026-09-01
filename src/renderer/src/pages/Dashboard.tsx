@@ -3,6 +3,9 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { KpiCard } from '../components/patterns/KpiCard';
 import { OwnerDashboardData } from '../../../core/dashboard';
+import { DashboardContract } from '../../../shared/ipc';
+import { useIpcQuery } from '../hooks/useIpc';
+import { useSession } from '../lib/session';
 
 interface DashboardProps {
   onNavigateToPurchases?: () => void;
@@ -18,9 +21,9 @@ export function Dashboard({
   onNavigateToReports
 }: DashboardProps) {
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const { userId } = useSession();
 
-  // Datos mock / demostrativos en renderer
-  const [dashboardData] = useState<OwnerDashboardData>({
+  const DATOS_MUESTRA: OwnerDashboardData = ({
     pulse: {
       todaySalesCents: 3845000n, // C$ 38,450.00
       todayMarginCents: 1280000n, // C$ 12,800.00 (33.29%)
@@ -84,7 +87,16 @@ export function Dashboard({
         { variantId: 1, sku: 'ARR-FAI-005', name: 'Arroz Faisán 5 Lbs', profitCents: 850000n, marginBp: 1259n }
       ]
     }
-  });
+  } as OwnerDashboardData);
+
+  // El tablero se pide al proceso principal, que ademas filtra por permiso:
+  // un cajero no recibe costo ni margen, no es que la UI los oculte.
+  const dashboardQuery = useIpcQuery(
+    DashboardContract,
+    { userId },
+    DATOS_MUESTRA as unknown as never
+  );
+  const dashboardData = (dashboardQuery.data ?? DATOS_MUESTRA) as unknown as OwnerDashboardData;
 
   const { pulse, actions, trends } = dashboardData;
 

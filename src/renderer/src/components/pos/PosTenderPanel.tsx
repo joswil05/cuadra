@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SaleDocument } from '../../../../core/sales';
-import { SalePaymentInput } from '../../../../main/services/sales.service';
+import { SalePaymentInput } from '../../../../shared/ipc';
 import { mulDiv } from '../../../../core/money';
 import { Button } from '../ui/Button';
 import { Kbd } from '../ui/Kbd';

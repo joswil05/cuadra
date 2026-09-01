@@ -23,7 +23,9 @@
     "build:dir": "electron-vite build && electron-builder --win --dir && npm run rebuild:node",
     "rebuild:node": "npm rebuild better-sqlite3",
     "rebuild:electron": "electron-builder install-app-deps",
-    "start": "electron-vite preview"
+    "start": "electron-vite preview",
+    "check:layers": "node scripts/check-layers.mjs",
+    "verify": "npm run test && npx tsc --noEmit && npm run lint && npm run check:core && npm run check:tokens && npm run check:layers"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

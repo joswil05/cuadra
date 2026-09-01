@@ -1,4 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import {
+  InventoryListContract,
+  InventoryCreateContract,
+  InventoryAdjustContract,
+  InventoryBulkTaxContract,
+  InventoryKardexContract
+} from '../../../shared/ipc';
+import { call } from '../lib/api';
+import { useIpcQuery } from '../hooks/useIpc';
+import { useSession } from '../lib/session';
 import { DataView } from '../components/patterns/DataView';
 import { KpiCard } from '../components/patterns/KpiCard';
 import { Button } from '../components/ui/Button';
@@ -80,8 +90,13 @@ const INITIAL_CATALOG: CatalogItem[] = [
 ];
 
 export function Inventory() {
-  const { success, info } = useToast();
-  const [catalog, setCatalog] = useState<CatalogItem[]>(INITIAL_CATALOG);
+  const { success, info, error: toastError } = useToast();
+  const { userId, connected } = useSession();
+
+  // Catálogo real desde SQLite. Sin puente IPC cae al catálogo de muestra.
+  const catalogQuery = useIpcQuery(InventoryListContract, undefined, INITIAL_CATALOG);
+  const catalog: CatalogItem[] = catalogQuery.data ?? [];
+  const reloadCatalog = catalogQuery.reload;
   const [searchQuery, setSearchQuery] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isVatModalOpen, setIsVatModalOpen] = useState(false);
@@ -124,65 +139,77 @@ export function Inventory() {
   }, 0n);
   const lowStockCount = catalog.filter((c) => c.stockMilli <= c.minStockMilli).length;
 
-  const handleSaveProduct = (data: ProductFormData) => {
-    const newItem: CatalogItem = {
-      id: Date.now(),
-      variantId: Date.now() + 1,
-      name: data.name,
-      sku: data.sku,
-      barcode: data.barcode || null,
-      priceCents: data.priceCents,
-      costMicros: data.costMicros,
-      stockMilli: 0n,
-      minStockMilli: 5_000n,
-      taxStatus: 'SIN_DEFINIR'
-    };
-
-    setCatalog((prev) => [newItem, ...prev]);
-    success('Producto registrado', newItem.sku);
+  const handleSaveProduct = async (data: ProductFormData) => {
+    try {
+      await call(InventoryCreateContract, {
+        name: data.name,
+        sku: data.sku,
+        unitId: 1,
+        barcode: data.barcode || undefined,
+        priceCents: data.priceCents,
+        costMicros: data.costMicros,
+        // Nace sin estatus de IVA a propósito: alguien que conoce la norma
+        // tiene que clasificarlo antes de la primera factura.
+        taxRateId: null,
+        userId
+      });
+      await reloadCatalog();
+      success('Producto registrado', data.sku);
+    } catch (err) {
+      toastError('No se pudo registrar', err instanceof Error ? err.message : String(err));
+    }
   };
 
-  const handleApplyVat = (productIds: number[], taxRateId: number) => {
-    const newStatus: 'IVA15' | 'EXENTO' = taxRateId === 1 ? 'IVA15' : 'EXENTO';
-    setCatalog((prev) =>
-      prev.map((item) => (productIds.includes(item.id) ? { ...item, taxStatus: newStatus } : item))
-    );
-    success(`Estatus de IVA actualizado para ${productIds.length} productos`);
+  const handleApplyVat = async (productIds: number[], taxRateId: number) => {
+    try {
+      await call(InventoryBulkTaxContract, { productIds, taxRateId, userId });
+      await reloadCatalog();
+      success(`Estatus de IVA actualizado para ${productIds.length} productos`);
+    } catch (err) {
+      toastError('No se pudo actualizar el IVA', err instanceof Error ? err.message : String(err));
+    }
   };
 
-  const handleSaveAdjustment = (params: InventoryAdjustmentParams) => {
-    setCatalog((prev) =>
-      prev.map((item) => {
-        if (item.variantId === params.variantId) {
-          const delta = params.direction === 'in' ? params.qtyMilli : -params.qtyMilli;
-          const nextStock = item.stockMilli + delta;
-          return { ...item, stockMilli: nextStock > 0n ? nextStock : 0n };
-        }
-        return item;
+  const handleSaveAdjustment = async (params: InventoryAdjustmentParams) => {
+    try {
+      await call(InventoryAdjustContract, {
+        variantId: params.variantId,
+        warehouseId: params.warehouseId || 1,
+        direction: params.direction,
+        qtyMilli: params.qtyMilli,
+        unitCostMicros: params.unitCostMicros,
+        reason: params.reason,
+        note: params.note || 'Ajuste manual',
+        userId
+      });
+      await reloadCatalog();
+      success('Ajuste registrado en Kardex');
+    } catch (err) {
+      toastError('No se pudo ajustar', err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  // Kardex real de la variante seleccionada.
+  const [kardexEntries, setKardexEntries] = useState<KardexEntry[]>([]);
+  useEffect(() => {
+    if (!isKardexOpen || !selectedItem || !connected) {
+      setKardexEntries([]);
+      return;
+    }
+    let cancelled = false;
+    void call(InventoryKardexContract, { variantId: selectedItem.variantId, limit: 200 })
+      .then((rows) => {
+        if (!cancelled) setKardexEntries(rows as unknown as KardexEntry[]);
       })
-    );
-    success('Ajuste registrado en Kardex');
-  };
-
-  const mockKardexEntries: KardexEntry[] = selectedItem
-    ? [
-        {
-          id: 1,
-          at: new Date().toISOString(),
-          warehouseId: 1,
-          variantId: selectedItem.variantId,
-          direction: 'in',
-          qtyMilli: selectedItem.stockMilli,
-          unitCostMicros: selectedItem.costMicros,
-          totalCostCents: (selectedItem.costMicros * selectedItem.stockMilli) / 10_000_000n,
-          balanceQtyMilli: selectedItem.stockMilli,
-          balanceAvgCostMicros: selectedItem.costMicros,
-          reason: 'initial',
-          userId: 1,
-          note: 'Inventario inicial'
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          toastError('No se pudo leer el Kardex', err instanceof Error ? err.message : String(err));
         }
-      ]
-    : [];
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isKardexOpen, selectedItem, connected, toastError]);
 
   const tableViewNode = (
     <div className="overflow-x-auto border border-border rounded-xl bg-surface shadow-xs">
@@ -390,7 +417,7 @@ export function Inventory() {
         onClose={() => setIsKardexOpen(false)}
         productName={selectedItem?.name ?? ''}
         sku={selectedItem?.sku ?? ''}
-        entries={mockKardexEntries}
+        entries={kardexEntries}
       />
 
       <CsvImportModal

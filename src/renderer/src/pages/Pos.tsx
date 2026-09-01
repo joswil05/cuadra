@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   PosCart,
+  PosProduct,
   createPosCart,
   parseScanInput,
   addOrIncrementCartLine,
@@ -8,7 +9,9 @@ import {
   SuspendedCartItem
 } from '../../../core/pos';
 import { ReceiptData } from '../../../core/receipt';
-import type { SalePaymentInput } from '../../../main/services/sales.service';
+import { PosSearchContract, PosTenderContract, SalePaymentInput } from '../../../shared/ipc';
+import { call } from '../lib/api';
+import { useSession } from '../lib/session';
 import { PosScannerInput } from '../components/pos/PosScannerInput';
 import { PosCartTable } from '../components/pos/PosCartTable';
 import { PosTenderPanel } from '../components/pos/PosTenderPanel';
@@ -23,6 +26,7 @@ import { Dialog } from '../components/ui/Dialog';
 
 export function Pos() {
   const { success, error, info } = useToast();
+  const { boot, userId, shiftId, ticketSeriesId } = useSession();
   const [cart, setCart] = useState<PosCart>(() => createPosCart('pos-active'));
   const [selectedLineNo, setSelectedLineNo] = useState<number>(1);
   const [isTenderOpen, setIsTenderOpen] = useState(false);
@@ -36,27 +40,29 @@ export function Pos() {
     return calculatePosCartDocument(cart, 'general', true, true);
   }, [cart]);
 
-  // Manejo de escaneo
-  const handleScan = (input: string) => {
+  // Manejo de escaneo: busca el producto real en la base de datos.
+  const handleScan = async (input: string) => {
     const parsed = parseScanInput(input);
     if (!parsed.ok) {
       error(parsed.error);
       return;
     }
 
-    const mockProduct = {
-      productId: 1,
-      variantId: Date.now(),
-      sku: parsed.code.toUpperCase(),
-      name: `Artículo ${parsed.code.toUpperCase()}`,
-      unitPriceCents: 3500n,
-      taxKind: 'taxable' as const,
-      taxRateBp: 1500n,
-      stockMilli: 100_000n,
-      tracksStock: true
-    };
+    let product: PosProduct | undefined;
+    try {
+      const matches = await call(PosSearchContract, { query: parsed.code });
+      product = matches[0];
+    } catch (err) {
+      error('No se pudo buscar el producto', err instanceof Error ? err.message : String(err));
+      return;
+    }
 
-    const res = addOrIncrementCartLine(cart, mockProduct, parsed.multiplier, false);
+    if (!product) {
+      error('Producto no encontrado', parsed.code);
+      return;
+    }
+
+    const res = addOrIncrementCartLine(cart, product, parsed.multiplier, false);
     if (res.ok) {
       setCart(res.cart);
       setSelectedLineNo(res.addedLine.lineNo);
@@ -137,22 +143,52 @@ export function Pos() {
     }
   });
 
-  const handleConfirmTender = (payments: SalePaymentInput[]) => {
-    // Generar datos de factura DGI
+  const handleConfirmTender = async (payments: SalePaymentInput[]) => {
+    if (!shiftId) {
+      error('No hay turno de caja abierto', 'Abrí un turno antes de cobrar.');
+      return;
+    }
+    if (!ticketSeriesId) {
+      error('No hay serie de tickets configurada');
+      return;
+    }
+
+    // La venta se graba primero. Si la base la rechaza, no se imprime nada.
+    let sale;
+    try {
+      const res = await call(PosTenderContract, {
+        cart,
+        seriesId: ticketSeriesId,
+        shiftId,
+        userId,
+        docType: 'ticket',
+        payments
+      });
+      if (!res.ok) {
+        error('La venta fue rechazada', res.error);
+        return;
+      }
+      sale = res.sale;
+    } catch (err) {
+      error('No se pudo cobrar', err instanceof Error ? err.message : String(err));
+      return;
+    }
+
+    // El comprobante se arma con lo que quedó grabado, no con lo que se pidió.
     const receipt: ReceiptData = {
-      companyName: 'Comercial La Bendición, S.A.',
-      tradeName: 'Minisúper La Bendición',
-      address: 'Costado Este de la Iglesia El Calvario, Managua',
-      phone: '+505 2222-3333',
-      ruc: 'J0310000123456',
-      dgiAuthNumber: 'DGI-AUT-2026-987654',
-      seriesPrefix: 'T-',
-      folio: `T-${String(Math.floor(Math.random() * 90000) + 10000)}`,
-      at: new Date().toLocaleString(),
+      companyName: boot?.company?.legalName ?? 'Empresa sin configurar',
+      tradeName: boot?.company?.tradeName ?? '',
+      address: boot?.company?.address ?? '',
+      phone: boot?.company?.phone ?? '',
+      ruc: boot?.company?.ruc ?? '',
+      dgiAuthNumber: boot?.company?.dgiAuthNumber ?? '',
+      seriesPrefix: '',
+      folio: sale.folio,
+      at: new Date(sale.at).toLocaleString(),
       docType: 'ticket',
-      paymentCondition: 'contado',
-      taxRegime: 'general',
-      cashierName: 'Juan Pérez',
+      paymentCondition: sale.creditCents > 0n ? 'credito' : 'contado',
+      taxRegime: (boot?.company?.taxRegime as 'general' | 'cuota_fija') ?? 'general',
+      cashierName: '',
       customerName: cart.customerName ?? 'Cliente Mostrador',
       customerRuc: 'N/A',
       lines: cart.lines.map((l) => ({

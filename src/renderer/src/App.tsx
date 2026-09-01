@@ -9,7 +9,9 @@ import { Purchases } from './pages/Purchases';
 import { Customers } from './pages/Customers';
 import { Reports } from './pages/Reports';
 import { Dashboard } from './pages/Dashboard';
+import { Onboarding } from './pages/Onboarding';
 import { useShortcuts } from './hooks/useShortcuts';
+import { SessionProvider, useSession } from './lib/session';
 
 function AppContent() {
   const [activeNavId, setActiveNavId] = useState('showcase');
@@ -141,10 +143,49 @@ function AppContent() {
   );
 }
 
+/**
+ * Decide qué mostrar según el estado real del negocio:
+ * empresa sin configurar -> asistente; configurada -> aplicación.
+ */
+function AppGate() {
+  const { boot, loading, error, connected, reload } = useSession();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-bg">
+        <p className="text-sm text-text-2">Abriendo Cuadra...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center">
+        <h1 className="text-base font-semibold text-text-1">No se pudo abrir la base de datos</h1>
+        <p className="max-w-md text-xs text-text-2">{error}</p>
+        <button
+          onClick={() => void reload()}
+          className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-accent-hover"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  if (connected && boot?.needsOnboarding) {
+    return <Onboarding onComplete={() => void reload()} />;
+  }
+
+  return <AppContent />;
+}
+
 export function App() {
   return (
     <ToastProvider>
-      <AppContent />
+      <SessionProvider>
+        <AppGate />
+      </SessionProvider>
     </ToastProvider>
   );
 }

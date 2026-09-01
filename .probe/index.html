@@ -1,0 +1,12 @@
+<!doctype html><html><body><script>
+(async () => {
+  try {
+    const r = await window.probe.run();
+    const ok = typeof r.big === 'bigint' && r.big === 12345678901234567890n
+            && typeof r.neg === 'bigint' && r.neg === -50n
+            && typeof r.nested.arr[0] === 'bigint';
+    window.probe.report(ok ? 'BIGINT_OK typeof=' + typeof r.big + ' valor=' + r.big
+                           : 'BIGINT_FALLA typeof=' + typeof r.big + ' valor=' + r.big);
+  } catch (e) { window.probe.report('EXCEPCION: ' + e.message); }
+})();
+</script></body></html>

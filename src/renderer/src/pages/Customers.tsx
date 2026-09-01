@@ -1,3 +1,12 @@
+import {
+  CustomersListContract,
+  CustomersPaymentContract,
+  CustomersCreateContract,
+  CustomersStatementContract
+} from '../../../shared/ipc';
+import { call } from '../lib/api';
+import { useSession } from '../lib/session';
+import { useIpcQuery } from '../hooks/useIpc';
 import { useState, useMemo } from 'react';
 import { DataView } from '../components/patterns/DataView';
 import { KpiCard } from '../components/patterns/KpiCard';
@@ -10,8 +19,8 @@ import { CustomerStatementDrawer } from '../components/customers/CustomerStateme
 import {
   Customer,
   CreateCustomerParams,
-  CustomerStatement,
-  calculateAgingBuckets
+  CustomerStatement
+
 } from '../../../core/customers';
 
 const INITIAL_CUSTOMERS: (Customer & { balanceCents: bigint })[] = [
@@ -52,8 +61,17 @@ const INITIAL_CUSTOMERS: (Customer & { balanceCents: bigint })[] = [
 ];
 
 export function Customers() {
-  const { success } = useToast();
-  const [customers, setCustomers] = useState<(Customer & { balanceCents: bigint })[]>(INITIAL_CUSTOMERS);
+  const { userId, shiftId } = useSession();
+  const { success, error } = useToast();
+  // Clientes reales desde SQLite; sin puente cae a la lista de muestra.
+  const customersQuery = useIpcQuery(
+    CustomersListContract,
+    undefined,
+    INITIAL_CUSTOMERS as unknown as never
+  );
+  const customers = (customersQuery.data ??
+    INITIAL_CUSTOMERS) as unknown as (Customer & { balanceCents: bigint })[];
+  const reloadCustomers = customersQuery.reload;
   const [searchQuery, setSearchQuery] = useState('');
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -78,26 +96,22 @@ export function Customers() {
   const totalLoyaltyPoints = customers.reduce((acc, c) => acc + c.pointsBalance, 0n);
 
   const handleSaveCustomer = (params: CreateCustomerParams) => {
-    const newCust: Customer & { balanceCents: bigint } = {
-      id: Date.now(),
-      uid: `cust-${Date.now()}`,
-      code: params.code ?? `CLI-${String(Date.now()).slice(-5)}`,
+    void call(CustomersCreateContract, {
       name: params.name,
-      docType: params.docType || null,
-      docNumber: params.docNumber || null,
-      taxRegime: params.taxRegime || null,
-      phone: params.phone || null,
-      email: params.email || null,
-      address: params.address || null,
-      creditLimitCents: params.creditLimitCents ?? 0n,
-      creditDays: params.creditDays ?? 0,
-      pointsBalance: 0n,
-      isActive: true,
-      balanceCents: 0n
-    };
-
-    setCustomers((prev) => [...prev, newCust]);
-    success('Cliente registrado exitosamente', newCust.name);
+      code: params.code,
+      docNumber: params.docNumber || undefined,
+      phone: params.phone || undefined,
+      email: params.email || undefined,
+      address: params.address || undefined,
+      creditLimitCents: params.creditLimitCents
+    })
+      .then(async () => {
+        await reloadCustomers();
+        success('Cliente registrado exitosamente', params.name);
+      })
+      .catch((err: unknown) => {
+        error('No se pudo registrar el cliente', err instanceof Error ? err.message : String(err));
+      });
   };
 
   const handleSavePayment = (params: {
@@ -106,67 +120,46 @@ export function Customers() {
     method: 'cash' | 'card' | 'transfer' | 'check';
     note?: string;
   }) => {
-    setCustomers((prev) =>
-      prev.map((c) => {
-        if (c.id === params.customerId) {
-          const newBal = c.balanceCents > params.amountCents ? c.balanceCents - params.amountCents : 0n;
-          return { ...c, balanceCents: newBal };
-        }
-        return c;
+    if (!shiftId) {
+      error('No hay turno de caja abierto', 'Un abono en efectivo entra al cajón: abrí turno primero.');
+      return;
+    }
+    void call(CustomersPaymentContract, {
+      customerId: params.customerId,
+      amountCents: params.amountCents,
+      method: params.method,
+      shiftId,
+      userId,
+      note: params.note
+    })
+      .then(async () => {
+        await reloadCustomers();
+        success(
+          'Abono a cuenta corriente registrado',
+          `C$ ${(Number(params.amountCents) / 100).toFixed(2)}`
+        );
       })
-    );
-    success('Abono a cuenta corriente registrado', `C$ ${(Number(params.amountCents) / 100).toFixed(2)}`);
+      .catch((err: unknown) => {
+        error('No se pudo registrar el abono', err instanceof Error ? err.message : String(err));
+      });
   };
 
   const handleOpenStatement = (cust: Customer & { balanceCents: bigint }) => {
-    const aging = calculateAgingBuckets([
-      {
-        at: new Date().toISOString(),
-        dueOn: new Date().toISOString().substring(0, 10),
-        amountCents: cust.balanceCents
-      }
-    ]);
-
-    const statement: CustomerStatement = {
-      customer: cust,
-      balanceCents: cust.balanceCents,
-      creditLimitCents: cust.creditLimitCents,
-      availableCreditCents: cust.creditLimitCents > cust.balanceCents ? cust.creditLimitCents - cust.balanceCents : 0n,
-      aging,
-      entries: [
-        {
-          id: 1,
-          uid: 'entry-1',
-          customerId: cust.id,
-          at: new Date().toISOString(),
-          type: 'charge',
-          amountCents: cust.balanceCents,
-          balanceAfterCents: cust.balanceCents,
-          dueOn: new Date().toISOString().substring(0, 10),
-          refType: 'sale',
-          refId: 101,
-          shiftId: null,
-          method: null,
-          userId: 1,
-          note: 'Saldo inicial / Venta a crédito'
-        }
-      ]
-    };
-
-    setSelectedStatement(statement);
+    // El estado de cuenta se pide al proceso principal: es el libro real,
+    // no una reconstruccion a partir del saldo que se ve en la tabla.
+    void call(CustomersStatementContract, { customerId: cust.id })
+      .then((st) => setSelectedStatement(st as unknown as CustomerStatement))
+      .catch((err: unknown) => {
+        error(
+          'No se pudo abrir el estado de cuenta',
+          err instanceof Error ? err.message : String(err)
+        );
+      });
   };
 
   const handleRedeemPoints = (customerId: number) => {
-    setCustomers((prev) =>
-      prev.map((c) => (c.id === customerId ? { ...c, pointsBalance: 0n } : c))
-    );
-    if (selectedStatement && selectedStatement.customer.id === customerId) {
-      setSelectedStatement({
-        ...selectedStatement,
-        customer: { ...selectedStatement.customer, pointsBalance: 0n }
-      });
-    }
-    success('Puntos de fidelización canjeados');
+    // Canje de puntos aun sin canal IPC: no se finge exito.
+    error('Canje pendiente de conectar', `Falta el canal customers:redeem (cliente ${customerId}).`);
   };
 
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);

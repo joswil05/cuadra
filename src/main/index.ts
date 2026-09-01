@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import Database from 'better-sqlite3';
 import { runMigrations } from './db/migrator';
 import { createIpcRouter } from './ipc/router';
-import { PingContract, DbTestContract } from '../shared/ipc';
+import { registerBusinessHandlers, registerSystemHandlers } from './ipc/handlers';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -45,49 +45,11 @@ function initializeDatabase(): Database.Database {
 function setupIpc(database: Database.Database) {
   const router = createIpcRouter();
 
-  // Ping de prueba
-  router.register(PingContract, (input) => {
-    return {
-      reply: `Pong desde proceso principal: ${input.message}`,
-      timestamp: Date.now()
-    };
-  });
+  // Fontaneria de la fase 0
+  registerSystemHandlers(router, database);
 
-  // Prueba de escritura/lectura SQLite en settings
-  router.register(DbTestContract, (input) => {
-    const now = new Date().toISOString();
-    const jsonValue = JSON.stringify(input.value);
-
-    const stmt = database.prepare(`
-      INSERT INTO settings (key, value_json, updated_at)
-      VALUES (?, ?, ?)
-      ON CONFLICT(key) DO UPDATE SET
-        value_json = excluded.value_json,
-        updated_at = excluded.updated_at
-    `);
-    stmt.run(input.key, jsonValue, now);
-
-    const row = database.prepare(`
-      SELECT key, value_json, updated_at FROM settings WHERE key = ?
-    `).get(input.key) as { key: string; value_json: string; updated_at: string } | undefined;
-
-    if (!row) {
-      throw new Error(`No se pudo recuperar la fila para la clave '${input.key}'`);
-    }
-
-    let parsedVal = '';
-    try {
-      parsedVal = JSON.parse(row.value_json);
-    } catch {
-      parsedVal = row.value_json;
-    }
-
-    return {
-      key: row.key,
-      value: String(parsedVal),
-      updatedAt: row.updated_at
-    };
-  });
+  // Canales de negocio (todas las fases)
+  registerBusinessHandlers(router, database);
 
   // Escuchar invocaciones IPC desde el renderer
   ipcMain.handle('ipc:invoke', async (_event, channel: string, payload: unknown) => {

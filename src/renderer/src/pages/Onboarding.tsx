@@ -4,6 +4,8 @@ import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { IndustryProfile, TaxRegime } from '../../../core/onboarding';
+import { OnboardingContract } from '../../../shared/ipc';
+import { call } from '../lib/api';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -11,24 +13,65 @@ interface OnboardingProps {
 
 export function Onboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const { success } = useToast();
+  const { success, error } = useToast();
 
   // Form State
+  // Campos vacíos a propósito. Un asistente precargado con el RUC de otro
+  // negocio se acepta sin leer, y ese dato termina impreso en cada factura.
   const [industry, setIndustry] = useState<IndustryProfile>('minimarket');
   const [taxRegime, setTaxRegime] = useState<TaxRegime>('general');
-  const [businessName, setBusinessName] = useState('Minisúper La Esperanza, S.A.');
-  const [tradeName, setTradeName] = useState('La Esperanza');
-  const [ruc, setRuc] = useState('J0310000123456');
-  const [address, setAddress] = useState('Costado Este del Parque Central, Managua');
-  const [phone, setPhone] = useState('+505 2255-7788');
-  const [dgiAuthNumber, setDgiAuthNumber] = useState('DGI-AUT-2026-0099');
-  const [initialFundNio, setInitialFundNio] = useState('1500.00');
-  const [initialFundUsd, setInitialFundUsd] = useState('50.00');
-  const [adminFullName, setAdminFullName] = useState('Propietario Principal');
+  const [businessName, setBusinessName] = useState('');
+  const [tradeName, setTradeName] = useState('');
+  const [ruc, setRuc] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [dgiAuthNumber, setDgiAuthNumber] = useState('');
+  const [initialFundNio, setInitialFundNio] = useState('0.00');
+  const [initialFundUsd, setInitialFundUsd] = useState('0.00');
+  const [adminFullName, setAdminFullName] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleFinish = () => {
-    success('¡Configuración completada con éxito! Catálogo inicial cargado y turno abierto.');
-    onComplete();
+  /** "1500.50" -> 150050n. Sin decimales flotantes en ningún punto. */
+  const toCents = (text: string): bigint => {
+    const clean = text.trim().replace(/,/g, '');
+    const [whole = '0', frac = ''] = clean.split('.');
+    const cents = (frac + '00').slice(0, 2);
+    const sign = whole.startsWith('-') ? -1n : 1n;
+    const wholeDigits = whole.replace(/[^0-9]/g, '') || '0';
+    return sign * (BigInt(wholeDigits) * 100n + BigInt(cents || '0'));
+  };
+
+  const handleFinish = async () => {
+    if (!businessName.trim() || !ruc.trim() || !address.trim() || !phone.trim() || !adminFullName.trim()) {
+      error('Faltan datos obligatorios', 'Razón social, RUC, dirección, teléfono y responsable.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await call(OnboardingContract, {
+        businessName: businessName.trim(),
+        tradeName: tradeName.trim() || undefined,
+        ruc: ruc.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        dgiAuthNumber: dgiAuthNumber.trim() || undefined,
+        taxRegime,
+        industryProfile: industry,
+        initialCashFundNio: toCents(initialFundNio),
+        initialCashFundUsd: toCents(initialFundUsd),
+        adminFullName: adminFullName.trim()
+      });
+      success(
+        'Configuración completada',
+        `${res.seededProductsCount} productos sembrados y turno abierto.`
+      );
+      onComplete();
+    } catch (err) {
+      error('No se pudo completar', err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -236,7 +279,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               Siguiente
             </Button>
           ) : (
-            <Button variant="primary" onClick={handleFinish}>
+            <Button variant="primary" onClick={handleFinish} disabled={saving}>
               ¡Completar y Comenzar a Vender!
             </Button>
           )}
