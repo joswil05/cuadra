@@ -1,0 +1,50 @@
+{
+  "name": "cuadra",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ERP y Punto de Venta para MiPyMEs de Nicaragua",
+  "main": "./out/main/index.js",
+  "author": "Cuadra",
+  "homepage": "https://cuadra.ni",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "postinstall": "electron-rebuild",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "check:core": "node scripts/check-core.mjs",
+    "check:tokens": "node scripts/check-tokens.mjs",
+    "cli": "tsx scripts/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "rebuild": "electron-rebuild -f -w better-sqlite3"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.13.5",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^3.2.7",
+    "autoprefixer": "^10.4.20",
+    "electron": "^34.2.0",
+    "electron-vite": "^3.1.0",
+    "eslint": "^9.21.0",
+    "fast-check": "^4.9.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.6"
+  }
+}

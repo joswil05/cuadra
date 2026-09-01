@@ -1,0 +1,43 @@
+# Dependencias
+node_modules/
+
+# Salidas de compilación
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Base de datos local (dato del negocio, nunca al repositorio)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Respaldos
+backups/
+*.bak
+
+# Cobertura y reportes de prueba
+coverage/
+.nyc_output/
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Artefactos del sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# Registros
+*.log
+npm-debug.log*
