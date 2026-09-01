@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-09-01T03:23:22.323Z",
+        "reason": "Fijada en docs/AGENT-GUIDE.md 7.2 como contrato de diseno del proyecto, con font-feature-settings tnum/cv05/ss03: cv05 y ss03 son variantes de caracter propias de Inter. POS denso donde el cajero mira columnas de digitos ocho horas; la ley 7 del mismo documento exige tabular-nums en toda cifra. Decision de arquitectura, no confirmada explicitamente por el usuario."
+      }
+    ]
+  }
+}
