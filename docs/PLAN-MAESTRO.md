@@ -152,7 +152,7 @@ proyecto y la única fuente de verdad sobre qué está hecho.
 | F0 | Andamiaje | cerrada | 2026-08-31 | Andamiaje completo: electron-vite, React, TS estricto, better-sqlite3 compilado, migrador idempotente, IPC Zod y scripts de verificación permanente. |
 | F1 | Motor monetario, impuestos y moneda | cerrada | 2026-08-31 | 100% cobertura en money/tax/fx/sales/pricing, 4 propiedades fast-check (10k casos) y 8 casos de oro exactos al centavo. |
 | F2 | Costeo y Kardex | cerrada | 2026-08-31 | CPP en enteros, Kardex inmutable, transacciones BEGIN IMMEDIATE, conciliación v_stock_drift y propiedad con 10,000 casos. |
-| F3 | Venta atómica, series y turnos | cerrada con deuda | 2026-08-31 | Venta en 1 tx atómica, correlativo protegido, NC, turnos con arqueo bimoneda y 300 ventas con diferencia 0. **Deuda (auditoría 2026-08-31):** (1) `voidSale` no lee `sales.void_window_minutes`: anula una venta de 60 días. (2) `voidSale` no revierte Kardex ni caja, rompe el arqueo. (3) un pago con `method:'credit'` entra en `paidCents` y deja `creditCents = 0`: la cuenta por cobrar no se registra. (4) una venta a crédito sin `customerId` se acepta y crea deuda sin dueño. (5) la prueba de correlativo es secuencial, el plan pedía simultánea. |
+| F3 | Venta atómica, series y turnos | cerrada | 2026-08-31 | Venta en 1 tx atómica, correlativo protegido concurrentemente, NC, turnos con arqueo bimoneda (300 ventas con diferencia 0). Deuda cerrada: voidSale respeta ventana y revierte Kardex/caja/ledger, pagos a crédito con customerId obligatorio y prueba de correlativos bajo transacciones simultáneas. |
 | F4 | Sistema de diseño y armazón | pendiente | | |
 | F5 | Punto de venta | pendiente | | |
 | F6 | Inventario y catálogo | pendiente | | |
