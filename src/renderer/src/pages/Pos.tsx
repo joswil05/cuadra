@@ -205,7 +205,7 @@ export function Pos() {
       cashRoundingCents: saleDoc.cashRoundingCents,
       totalCents: saleDoc.totalCents,
       payments: payments.map((p) => {
-        const pCents = p.amountCents ?? (p.currencyCode === 'USD' ? (p.amountFx * 36624300n) / 1000000n : p.amountFx);
+        const pCents = p.amountCents ?? (p.currencyCode === 'USD' ? (p.amountFx * p.fxRateMicros) / 1_000_000n : p.amountFx);
         return {
           method: p.method,
           currencyCode: p.currencyCode,
@@ -213,8 +213,8 @@ export function Pos() {
           amountCents: pCents
         };
       }),
-      changeCents: payments.reduce((acc, p) => acc + (p.amountCents ?? (p.currencyCode === 'USD' ? (p.amountFx * 36624300n) / 1000000n : p.amountFx)), 0n) > saleDoc.totalCents
-        ? payments.reduce((acc, p) => acc + (p.amountCents ?? (p.currencyCode === 'USD' ? (p.amountFx * 36624300n) / 1000000n : p.amountFx)), 0n) - saleDoc.totalCents
+      changeCents: payments.reduce((acc, p) => acc + (p.amountCents ?? (p.currencyCode === 'USD' ? (p.amountFx * p.fxRateMicros) / 1_000_000n : p.amountFx)), 0n) > saleDoc.totalCents
+        ? payments.reduce((acc, p) => acc + (p.amountCents ?? (p.currencyCode === 'USD' ? (p.amountFx * p.fxRateMicros) / 1_000_000n : p.amountFx)), 0n) - saleDoc.totalCents
         : 0n
     };
 

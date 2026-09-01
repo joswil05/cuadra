@@ -17,83 +17,15 @@ import {
   PaySupplierParams
 } from '../../../core/purchases';
 
-const INITIAL_SUPPLIERS: SupplierItem[] = [
-  {
-    id: 1,
-    uid: 'supp-1',
-    name: 'Distribuidora La Famosa, S.A.',
-    docNumber: 'J0310000111111',
-    phone: '+505 2270-1111',
-    email: 'ventas@lafamosa.com.ni',
-    address: 'Carretera Norte Km 5.5, Managua',
-    creditDays: 30
-  },
-  {
-    id: 2,
-    uid: 'supp-2',
-    name: 'Compañía Cervecera de Nicaragua',
-    docNumber: 'J0310000222222',
-    phone: '+505 2249-0000',
-    email: 'pedidos@ccn.com.ni',
-    address: 'Carretera Norte Km 6.5, Managua',
-    creditDays: 15
-  }
-];
 
-const INITIAL_PURCHASES: PurchaseSummary[] = [
-  {
-    id: 1,
-    uid: 'purch-1',
-    folio: 'OC-000101',
-    supplierId: 1,
-    supplierName: 'Distribuidora La Famosa, S.A.',
-    warehouseId: 1,
-    at: '2026-08-31T14:00:00.000Z',
-    status: 'received',
-    supplierDoc: 'FAC-88991',
-    subtotalCents: 450000n,
-    taxCents: 67500n,
-    freightCents: 35000n,
-    totalCents: 552500n,
-    paidCents: 552500n,
-    receivedAt: '2026-08-31T14:30:00.000Z',
-    note: 'Recepción completa con flete prorrateado'
-  },
-  {
-    id: 2,
-    uid: 'purch-2',
-    folio: 'OC-000102',
-    supplierId: 2,
-    supplierName: 'Compañía Cervecera de Nicaragua',
-    warehouseId: 1,
-    at: '2026-08-31T16:00:00.000Z',
-    status: 'draft',
-    supplierDoc: 'FAC-99221',
-    subtotalCents: 120000n,
-    taxCents: 18000n,
-    freightCents: 10000n,
-    totalCents: 148000n,
-    paidCents: 0n,
-    receivedAt: null,
-    note: 'Pendiente de descarga en bodega'
-  }
-];
 
 export function Purchases() {
   const { success, info } = useToast();
-  const suppliersQuery = useIpcQuery(
-    SuppliersListContract,
-    undefined,
-    INITIAL_SUPPLIERS as unknown as never
-  );
-  const suppliers = (suppliersQuery.data ?? INITIAL_SUPPLIERS) as unknown as SupplierItem[];
+  const suppliersQuery = useIpcQuery(SuppliersListContract, undefined);
+  const suppliers = (suppliersQuery.data ?? []) as unknown as SupplierItem[];
   const reloadSuppliers = suppliersQuery.reload;
-  const purchasesQuery = useIpcQuery(
-    PurchasesListContract,
-    undefined,
-    INITIAL_PURCHASES as unknown as never
-  );
-  const purchases = (purchasesQuery.data ?? INITIAL_PURCHASES) as unknown as PurchaseSummary[];
+  const purchasesQuery = useIpcQuery(PurchasesListContract, undefined);
+  const purchases = (purchasesQuery.data ?? []) as unknown as PurchaseSummary[];
   const reloadPurchases = purchasesQuery.reload;
   const [searchQuery, setSearchQuery] = useState('');
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);

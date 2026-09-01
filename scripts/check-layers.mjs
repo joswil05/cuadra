@@ -53,7 +53,9 @@ for (const archivo of archivos(pagesDir, ['.tsx'])) {
   const nombre = archivo.split(/[\\/]/).pop();
   if (SIN_DATOS.has(nombre)) continue;
   const texto = readFileSync(archivo, 'utf8');
-  const usaIpc = /useIpcQuery|from '.*lib\/api'|shared\/ipc/.test(texto);
+  // `useSession` cuenta: la sesión se llena con el canal `app:bootstrap`, así
+  // que una pantalla que solo lee de ahí sigue mostrando datos reales.
+  const usaIpc = /useIpcQuery|useSession|from '.*lib\/api'|shared\/ipc/.test(texto);
   if (!usaIpc) {
     problemas.push(
       `${relative(raiz, archivo)}: la pantalla no habla por IPC; sus datos no se guardan.`

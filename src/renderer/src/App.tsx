@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ToastProvider, useToast } from './components/ui/Toast';
+import { ToastProvider } from './components/ui/Toast';
 import { Shell } from './components/layout/Shell';
 import { CommandPalette, CommandItem } from './components/patterns/CommandPalette';
 import { Showcase } from './pages/Showcase';
@@ -10,96 +10,54 @@ import { Customers } from './pages/Customers';
 import { Reports } from './pages/Reports';
 import { Dashboard } from './pages/Dashboard';
 import { Onboarding } from './pages/Onboarding';
+import { Cash } from './pages/Cash';
+import { Taxes } from './pages/Taxes';
+import { Settings } from './pages/Settings';
 import { useShortcuts } from './hooks/useShortcuts';
 import { SessionProvider, useSession } from './lib/session';
+import { visibleItems } from './lib/navigation';
 
 function AppContent() {
-  const [activeNavId, setActiveNavId] = useState('showcase');
+  const [activeNavId, setActiveNavId] = useState('pos');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const { info } = useToast();
+  const { can } = useSession();
 
-  const commands: CommandItem[] = [
-    {
-      id: 'nav-pos',
-      title: 'Ir al Punto de Venta',
-      category: 'Navegación',
-      shortcut: 'Ctrl+1',
-      onSelect: () => setActiveNavId('pos')
-    },
-    {
-      id: 'nav-inventory',
-      title: 'Ir a Inventario y Kardex',
-      category: 'Navegación',
-      shortcut: 'Ctrl+2',
-      onSelect: () => setActiveNavId('inventory')
-    },
-    {
-      id: 'nav-purchases',
-      title: 'Ir a Compras y Proveedores',
-      category: 'Navegación',
-      shortcut: 'Ctrl+3',
-      onSelect: () => setActiveNavId('purchases')
-    },
-    {
-      id: 'nav-customers',
-      title: 'Ir a Clientes y Cuentas por Cobrar',
-      category: 'Navegación',
-      shortcut: 'Ctrl+4',
-      onSelect: () => setActiveNavId('customers')
-    },
-    {
-      id: 'nav-reports',
-      title: 'Ir a Reportes',
-      category: 'Navegación',
-      shortcut: 'Ctrl+5',
-      onSelect: () => setActiveNavId('reports')
-    },
-    {
-      id: 'nav-dashboard',
-      title: 'Ir al Panel del Dueño',
-      category: 'Navegación',
-      shortcut: 'Ctrl+6',
-      onSelect: () => setActiveNavId('dashboard')
-    },
-    {
-      id: 'nav-showcase',
-      title: 'Ver Sistema de Diseño',
-      category: 'Navegación',
-      shortcut: 'Ctrl+7',
-      onSelect: () => setActiveNavId('showcase')
-    },
-    {
-      id: 'action-shift-close',
-      title: 'Arqueo y Cierre de Turno',
-      category: 'Caja',
-      shortcut: 'F10',
-      onSelect: () => info('Abriendo arqueo de turno...')
-    }
-  ];
+  // La paleta y los atajos se derivan de la misma navegación que dibuja la
+  // barra lateral: una sola fuente de verdad, imposible que se desincronicen.
+  const items = visibleItems(can, import.meta.env.DEV);
 
-  useShortcuts({
-    'Ctrl+K': () => setIsCommandPaletteOpen(true),
-    'Ctrl+1': () => setActiveNavId('pos'),
-    'Ctrl+2': () => setActiveNavId('inventory'),
-    'Ctrl+3': () => setActiveNavId('purchases'),
-    'Ctrl+4': () => setActiveNavId('customers'),
-    'Ctrl+5': () => setActiveNavId('reports'),
-    'Ctrl+6': () => setActiveNavId('dashboard'),
-    'Ctrl+7': () => setActiveNavId('showcase')
-  });
+  const commands: CommandItem[] = items.map((item) => ({
+    id: `nav-${item.id}`,
+    title: `Ir a ${item.label}`,
+    category: 'Navegación',
+    shortcut: item.shortcut,
+    onSelect: () => setActiveNavId(item.id)
+  }));
+
+  const shortcuts: Record<string, () => void> = { 'Ctrl+K': () => setIsCommandPaletteOpen(true) };
+  for (const item of items) {
+    if (item.shortcut) shortcuts[item.shortcut] = () => setActiveNavId(item.id);
+  }
+  useShortcuts(shortcuts);
 
   const renderActiveView = () => {
     switch (activeNavId) {
       case 'pos':
         return <Pos />;
+      case 'cash':
+        return <Cash />;
       case 'inventory':
         return <Inventory />;
-      case 'purchases':
-        return <Purchases />;
       case 'customers':
         return <Customers />;
+      case 'purchases':
+        return <Purchases />;
       case 'reports':
         return <Reports />;
+      case 'taxes':
+        return <Taxes />;
+      case 'settings':
+        return <Settings />;
       case 'dashboard':
         return (
           <Dashboard
@@ -112,17 +70,7 @@ function AppContent() {
       case 'showcase':
         return <Showcase />;
       default:
-        return (
-          <div className="flex flex-col gap-4">
-            <div className="p-6 bg-surface border border-border rounded-xl">
-              <h2 className="text-base font-semibold text-text-1 mb-2">Módulo: {activeNavId.toUpperCase()}</h2>
-              <p className="text-xs text-text-2">
-                Este módulo se implementará en su fase correspondiente del Plan Maestro.
-              </p>
-            </div>
-            <Showcase />
-          </div>
-        );
+        return <Pos />;
     }
   };
 

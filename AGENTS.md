@@ -138,3 +138,38 @@ terminada y no guarda nada: ese fue el fallo que sobrevivió once fases.
 
 **Si una acción todavía no tiene canal, dilo en la interfaz.** No muestres un
 mensaje de éxito por algo que no se guardó.
+
+## Veracidad: qué puede mostrar una pantalla
+
+Un ERP que enseña dinero falso y plausible hace más daño que uno que no
+enseña nada. Tres reglas:
+
+1. **Prohibido el dato de muestra en una pantalla de negocio.** Nada de
+   `INITIAL_`, `MOCK_`, `SEED_` ni importes escritos a mano. Si la consulta
+   falla, `useIpcQuery` borra el dato y la pantalla muestra el error.
+2. **Cuatro estados, siempre los mismos.** Usa `<DataState>`: cargando,
+   error, vacío y con contenido. Ninguna pantalla los inventa por su cuenta.
+3. **No afirmes que algo cuadra si no se comprobó.** Una conciliación sin
+   calcular se muestra como «Sin calcular», nunca como cero.
+
+`test/e2e/veracidad.test.ts` lo vigila: compara lo que devuelve cada canal
+contra el libro sumado aparte, y falla si una pantalla declara cifras de
+muestra. Ahí se descubrió que la pantalla de Impuestos leía los campos en
+`snake_case` cuando el servicio devuelve `camelCase`, y habría mostrado
+C$ 0.00 en todo.
+
+## Navegación
+
+`src/renderer/src/lib/navigation.tsx` es la **única** fuente: la barra
+lateral, la paleta de comandos y los atajos de teclado se derivan de ahí, así
+que no pueden desincronizarse. Está agrupada por ritmo de uso, no por módulo
+del código.
+
+Para agregar una pantalla: añade el elemento al grupo que corresponda y su
+`case` en `App.tsx`. Las pruebas verifican que todo elemento tenga vista
+enrutada y que ningún atajo se repita.
+
+- `requires: 'permiso'` la oculta a quien no lo tiene.
+- `devOnly: true` la deja fuera de la aplicación instalada. El catálogo de
+  componentes lo usa: es una herramienta de desarrollo y no tiene nada que
+  hacer en la barra de un negocio.

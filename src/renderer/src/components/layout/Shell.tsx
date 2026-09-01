@@ -2,13 +2,10 @@ import React, { useState } from 'react';
 import { useTheme, Theme, Density } from '../../hooks/useTheme';
 import { Kbd } from '../ui/Kbd';
 import { Badge } from '../ui/Badge';
+import { visibleGroups, NavItem } from '../../lib/navigation';
+import { useSession } from '../../lib/session';
 
-export interface NavItem {
-  id: string;
-  label: string;
-  shortcut?: string;
-  icon: React.ReactNode;
-}
+export type { NavItem };
 
 export interface ShellProps {
   children: React.ReactNode;
@@ -32,80 +29,12 @@ export function Shell({
   onOpenCommandPalette
 }: ShellProps) {
   const { theme, setTheme, density, setDensity } = useTheme();
+  const { can } = useSession();
+  const esDesarrollo = import.meta.env.DEV;
+  const grupos = visibleGroups(can, esDesarrollo);
+  const navItems: NavItem[] = grupos.flatMap((g) => g.items);
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 
-  const navItems: NavItem[] = [
-    {
-      id: 'pos',
-      label: 'Punto de Venta',
-      shortcut: 'Ctrl+1',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    {
-      id: 'inventory',
-      label: 'Inventario',
-      shortcut: 'Ctrl+2',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-        </svg>
-      )
-    },
-    {
-      id: 'purchases',
-      label: 'Compras',
-      shortcut: 'Ctrl+3',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-        </svg>
-      )
-    },
-    {
-      id: 'customers',
-      label: 'Clientes y Crédito',
-      shortcut: 'Ctrl+4',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    {
-      id: 'reports',
-      label: 'Reportes',
-      shortcut: 'Ctrl+5',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
-    },
-    {
-      id: 'dashboard',
-      label: 'Panel del Dueño',
-      shortcut: 'Ctrl+6',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      )
-    },
-    {
-      id: 'showcase',
-      label: 'Sistema de Diseño',
-      shortcut: 'Ctrl+7',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-        </svg>
-      )
-    }
-  ];
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg text-text-1">
@@ -138,27 +67,40 @@ export function Shell({
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {navItems.map((item) => {
-            const isActive = activeNavId === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onNavigate?.(item.id)}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
-                  isActive
-                    ? 'bg-accent-soft text-accent font-semibold'
-                    : 'text-text-2 hover:bg-surface-2 hover:text-text-1'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className={isActive ? 'text-accent' : 'text-text-3'}>{item.icon}</span>
-                  <span>{item.label}</span>
-                </div>
-                {item.shortcut && <Kbd className="text-[10px]">{item.shortcut}</Kbd>}
-              </button>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto p-2">
+          {grupos.map((grupo, gi) => (
+            <div key={grupo.id} className={gi > 0 ? 'mt-4' : ''}>
+              {grupo.label && (
+                <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-3">
+                  {grupo.label}
+                </p>
+              )}
+              {!grupo.label && <div className="mb-2 border-t border-border" />}
+              <div className="space-y-0.5">
+                {grupo.items.map((item) => {
+                  const isActive = activeNavId === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => onNavigate?.(item.id)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+                        isActive
+                          ? 'bg-accent-soft text-accent font-semibold'
+                          : 'text-text-2 hover:bg-surface-2 hover:text-text-1'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className={isActive ? 'text-accent' : 'text-text-3'}>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </div>
+                      {item.shortcut && <Kbd className="text-[10px]">{item.shortcut}</Kbd>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Sidebar Footer: Shift Status, Theme, Density & User */}

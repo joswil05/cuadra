@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { KpiCard } from '../components/patterns/KpiCard';
+import { DataState } from '../components/patterns/DataState';
+import { Chart, ChartPoint } from '../components/patterns/Chart';
 import { OwnerDashboardData } from '../../../core/dashboard';
 import { DashboardContract } from '../../../shared/ipc';
 import { useIpcQuery } from '../hooks/useIpc';
@@ -23,81 +25,50 @@ export function Dashboard({
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
   const { userId } = useSession();
 
-  const DATOS_MUESTRA: OwnerDashboardData = ({
-    pulse: {
-      todaySalesCents: 3845000n, // C$ 38,450.00
-      todayMarginCents: 1280000n, // C$ 12,800.00 (33.29%)
-      todayMarginBp: 3329n,
-      todayTicketsCount: 84,
-      avgTicketCents: 45773n, // C$ 457.73
-      cashInRegisterCents: 2450000n, // C$ 24,500.00
-      cashInRegisterUsd: 15000n, // $ 150.00
-      last14DaysSales: [
-        { day: '18/08', salesCents: 2800000n },
-        { day: '19/08', salesCents: 3100000n },
-        { day: '20/08', salesCents: 2950000n },
-        { day: '21/08', salesCents: 3400000n },
-        { day: '22/08', salesCents: 4100000n },
-        { day: '23/08', salesCents: 4600000n },
-        { day: '24/08', salesCents: 3200000n },
-        { day: '25/08', salesCents: 2900000n },
-        { day: '26/08', salesCents: 3300000n },
-        { day: '27/08', salesCents: 3150000n },
-        { day: '28/08', salesCents: 3600000n },
-        { day: '29/08', salesCents: 4300000n },
-        { day: '30/08', salesCents: 4750000n },
-        { day: '31/08', salesCents: 3845000n }
-      ],
-      salesVariationBp: 1250n // +12.50% vs semana pasada
-    },
-    actions: {
-      lowStockItems: [
-        { variantId: 1, sku: 'CAF-PRE-150', name: 'Café Presto 150g', stockMilli: 3000n, minStockMilli: 10000n },
-        { variantId: 2, sku: 'ARR-FAI-005', name: 'Arroz Faisán 5 Lbs', stockMilli: 4000n, minStockMilli: 15000n }
-      ],
-      expiringLots: [
-        { lotId: 1, sku: 'LAC-LECH-1L', name: 'Leche Entera La Perfecta 1L', lotNumber: 'LOT-2026-08', expiresAt: '2026-09-08', daysRemaining: 8, stockMilli: 24000n },
-        { lotId: 2, sku: 'PAN-MOL-450', name: 'Pan Molde Bimbo 450g', lotNumber: 'LOT-BIM-09', expiresAt: '2026-09-15', daysRemaining: 15, stockMilli: 12000n }
-      ],
-      overdueCustomers: [
-        { customerId: 1, name: 'Distribuidora del Norte', balanceCents: 850000n, overdueDays: 45 },
-        { customerId: 2, name: 'Comercial La Bendición', balanceCents: 420000n, overdueDays: 32 }
-      ],
-      cashDiscrepancies: [
-        { shiftId: 10, cashierName: 'Juan Cajero', diffCents: -5000n, diffUsd: 0n, at: '2026-08-30 16:00:00' }
-      ],
-      undefinedTaxProducts: [
-        { productId: 8, name: 'Mochila Escolar Juvenil' }
-      ]
-    },
-    trends: {
-      last30DaysSales: [
-        { day: '01/08', salesCents: 3200000n },
-        { day: '15/08', salesCents: 4500000n },
-        { day: '31/08', salesCents: 3845000n }
-      ],
-      topSellingProducts: [
-        { variantId: 1, sku: 'ARR-FAI-005', name: 'Arroz Faisán 5 Lbs', qtySoldMilli: 450000n, revenueCents: 6750000n },
-        { variantId: 2, sku: 'ACE-TRE-800', name: 'Aceite El Trébol 800ml', qtySoldMilli: 320000n, revenueCents: 4800000n },
-        { variantId: 3, sku: 'CAF-PRE-150', name: 'Café Presto 150g', qtySoldMilli: 280000n, revenueCents: 3360000n }
-      ],
-      topMarginProducts: [
-        { variantId: 3, sku: 'CAF-PRE-150', name: 'Café Presto 150g', profitCents: 1400000n, marginBp: 4166n },
-        { variantId: 4, sku: 'GAL-ORE-012', name: 'Galletas Oreo Paquete 12u', profitCents: 980000n, marginBp: 4500n },
-        { variantId: 1, sku: 'ARR-FAI-005', name: 'Arroz Faisán 5 Lbs', profitCents: 850000n, marginBp: 1259n }
-      ]
-    }
-  } as OwnerDashboardData);
-
+  
   // El tablero se pide al proceso principal, que ademas filtra por permiso:
   // un cajero no recibe costo ni margen, no es que la UI los oculte.
-  const dashboardQuery = useIpcQuery(
-    DashboardContract,
-    { userId },
-    DATOS_MUESTRA as unknown as never
-  );
-  const dashboardData = (dashboardQuery.data ?? DATOS_MUESTRA) as unknown as OwnerDashboardData;
+  const dashboardQuery = useIpcQuery(DashboardContract, { userId });
 
+  return (
+    <DataState
+      loading={dashboardQuery.loading}
+      error={dashboardQuery.error}
+      data={dashboardQuery.data as OwnerDashboardData | null}
+      onRetry={() => void dashboardQuery.reload()}
+      emptyTitle="Todavía no hay actividad que resumir"
+      emptyHint="El resumen aparece cuando se registre la primera venta del día."
+    >
+      {(datos) => (
+        <DashboardContenido
+          data={datos}
+          period={period}
+          setPeriod={setPeriod}
+          onNavigateToPurchases={onNavigateToPurchases}
+          onNavigateToInventory={onNavigateToInventory}
+          onNavigateToCustomers={onNavigateToCustomers}
+          onNavigateToReports={onNavigateToReports}
+        />
+      )}
+    </DataState>
+  );
+}
+
+interface ContenidoProps extends DashboardProps {
+  data: OwnerDashboardData;
+  period: 'today' | 'week' | 'month';
+  setPeriod: (p: 'today' | 'week' | 'month') => void;
+}
+
+function DashboardContenido({
+  data: dashboardData,
+  period,
+  setPeriod,
+  onNavigateToPurchases,
+  onNavigateToInventory,
+  onNavigateToCustomers,
+  onNavigateToReports
+}: ContenidoProps) {
   const { pulse, actions, trends } = dashboardData;
 
   const totalActionsCount = useMemo(() => {
@@ -359,7 +330,53 @@ export function Dashboard({
       </div>
 
       {/* =======================================================================
-          BANDA 3: LA TENDENCIA (Top 10 Venta vs Top 10 Margen)
+          BANDA 3: LA TENDENCIA
+          ======================================================================= */}
+      <section className="rounded-xl border border-border bg-surface p-4">
+        <div className="mb-3 flex items-start justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-text-1">Ventas de los últimos 30 días</h3>
+            <p className="text-xs text-text-3">
+              Señalá un día para ver su importe exacto. El eje arranca en cero.
+            </p>
+          </div>
+          <Badge variant="neutral">30 días</Badge>
+        </div>
+        <Chart
+          points={
+            (trends.last30DaysSales ?? []).map((d) => ({
+              label: d.day,
+              valueCents: d.salesCents
+            })) as ChartPoint[]
+          }
+          height={200}
+          seriesName="Ventas diarias"
+        />
+      </section>
+
+      <section className="rounded-xl border border-border bg-surface p-4">
+        <div className="mb-3 flex items-start justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-text-1">Pulso de los últimos 14 días</h3>
+            <p className="text-xs text-text-3">Comparación corta, para ver la semana en curso.</p>
+          </div>
+          <Badge variant="neutral">14 días</Badge>
+        </div>
+        <Chart
+          points={
+            (pulse.last14DaysSales ?? []).map((d) => ({
+              label: d.day,
+              valueCents: d.salesCents
+            })) as ChartPoint[]
+          }
+          height={140}
+          variant="bar"
+          seriesName="Ventas diarias"
+        />
+      </section>
+
+      {/* =======================================================================
+          BANDA 4: TOP 10 VENTA VS TOP 10 MARGEN
           ======================================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top 10 más vendidos por volumen */}

@@ -318,6 +318,7 @@ export const ReportMonthlyIncomeContract = define('reports:monthlyIncome', dateR
 export const ReportSalesBookContract = define('reports:salesBook', dateRange, out<unknown>());
 export const ReportInventoryContract = define('reports:inventory', nothing, out<unknown>());
 export const ReportMarginsContract = define('reports:margins', dateRange, out<unknown>());
+export const ReportReconciliationContract = define('reports:reconciliation', nothing, out<unknown>());
 export const ReportCashDiscrepanciesContract = define(
   'reports:cashDiscrepancies',
   nothing,

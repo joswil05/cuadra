@@ -50,6 +50,10 @@ export function useIpcQuery<TIn, TOut>(
     try {
       setData(await call(contractRef.current, inputRef.current));
     } catch (err) {
+      // Si la consulta falla, el dato se borra. Nunca se deja en pantalla un
+      // número viejo ni uno de muestra: en un sistema de dinero, una cifra
+      // falsa y plausible hace más daño que una pantalla vacía.
+      setData(null);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);

@@ -38,63 +38,13 @@ interface CatalogItem {
   taxStatus: 'IVA15' | 'EXENTO' | 'SIN_DEFINIR';
 }
 
-const INITIAL_CATALOG: CatalogItem[] = [
-  {
-    id: 1,
-    variantId: 1,
-    name: 'Coca-Cola 600ml',
-    sku: 'BEB-COC-600',
-    barcode: '7411001001',
-    priceCents: 3000n,
-    costMicros: 20_000_000n,
-    stockMilli: 50_000n,
-    minStockMilli: 10_000n,
-    taxStatus: 'IVA15'
-  },
-  {
-    id: 2,
-    variantId: 2,
-    name: 'Arroz Faisán 1lb',
-    sku: 'GRA-ARR-001',
-    barcode: '7411002002',
-    priceCents: 2000n,
-    costMicros: 15_000_000n,
-    stockMilli: 100_000n,
-    minStockMilli: 20_000n,
-    taxStatus: 'EXENTO'
-  },
-  {
-    id: 3,
-    variantId: 3,
-    name: 'Aceite Corona 1L',
-    sku: 'ACE-COR-001',
-    barcode: '7411003003',
-    priceCents: 6500n,
-    costMicros: 45_000_000n,
-    stockMilli: 5_000n,
-    minStockMilli: 10_000n,
-    taxStatus: 'SIN_DEFINIR'
-  },
-  {
-    id: 4,
-    variantId: 4,
-    name: 'Camisa Oxford Blanca (M)',
-    sku: 'CAM-OXF-M-BLANCO',
-    barcode: '7411004004',
-    priceCents: 45000n,
-    costMicros: 280_000_000n,
-    stockMilli: 12_000n,
-    minStockMilli: 5_000n,
-    taxStatus: 'IVA15'
-  }
-];
 
 export function Inventory() {
   const { success, info, error: toastError } = useToast();
   const { userId, connected } = useSession();
 
   // Catálogo real desde SQLite. Sin puente IPC cae al catálogo de muestra.
-  const catalogQuery = useIpcQuery(InventoryListContract, undefined, INITIAL_CATALOG);
+  const catalogQuery = useIpcQuery(InventoryListContract, undefined);
   const catalog: CatalogItem[] = catalogQuery.data ?? [];
   const reloadCatalog = catalogQuery.reload;
   const [searchQuery, setSearchQuery] = useState('');

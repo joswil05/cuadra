@@ -25,6 +25,7 @@ import {
   ReportInventoryContract,
   ReportMarginsContract,
   ReportCashDiscrepanciesContract,
+  ReportReconciliationContract,
   DashboardContract,
   ShiftOpenContract,
   ShiftBlindContract,
@@ -64,7 +65,8 @@ import {
   getSalesBookReport,
   getInventoryValuationReport,
   getProfitMarginsReport,
-  getCashDiscrepanciesReport
+  getCashDiscrepanciesReport,
+  reconcileReports
 } from '../services/reports.service';
 import { getOwnerDashboardData, getUserPermissions } from '../services/dashboard.service';
 
@@ -407,6 +409,7 @@ export function registerBusinessHandlers(router: IpcRouter, db: Database.Databas
   router.register(ReportInventoryContract, () => getInventoryValuationReport(db));
   router.register(ReportMarginsContract, (i) => getProfitMarginsReport(db, i.fromDate, i.toDate));
   router.register(ReportCashDiscrepanciesContract, () => getCashDiscrepanciesReport(db));
+  router.register(ReportReconciliationContract, () => reconcileReports(db));
 
   // -------------------------------------------------------------- Tablero
   router.register(DashboardContract, (input) => getOwnerDashboardData(db, input.userId));

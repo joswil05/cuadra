@@ -18,7 +18,8 @@ import {
   ReportInventoryContract,
   ReportMarginsContract,
   ReportSalesBookContract,
-  ReportCashDiscrepanciesContract
+  ReportCashDiscrepanciesContract,
+  ReportReconciliationContract
 } from '../../../shared/ipc';
 import { useIpcQuery } from '../hooks/useIpc';
 
@@ -28,152 +29,39 @@ export function Reports() {
   const [activeTab, setActiveTab] = useState<ReportTab>('fiscal');
 
   // Datos mock / demostrativos en renderer
-  const MUESTRA_dailyTaxRows: DailyTaxSummaryRow[] = ([
-    {
-      day: '2026-08-31',
-      docType: 'ticket',
-      documents: 42,
-      taxableBaseCents: 1850000n, // C$ 18,500.00
-      exemptBaseCents: 420000n,   // C$ 4,200.00
-      taxCents: 277500n,          // C$ 2,775.00 (15%)
-      roundingCents: 0n,
-      totalCents: 2547500n        // C$ 25,475.00
-    },
-    {
-      day: '2026-08-31',
-      docType: 'invoice',
-      documents: 15,
-      taxableBaseCents: 3200000n, // C$ 32,000.00
-      exemptBaseCents: 0n,
-      taxCents: 480000n,          // C$ 4,800.00 (15%)
-      roundingCents: 0n,
-      totalCents: 3680000n        // C$ 36,800.00
-    }
-  ]);
+  const VACIO_dailyTaxRows: DailyTaxSummaryRow[] = [];
 
-  const MUESTRA_monthlyGross: MonthlyGrossIncomeRow[] = ([
-    { period: '2026-06', grossCents: 45000000n }, // C$ 450,000.00
-    { period: '2026-07', grossCents: 52000000n }, // C$ 520,000.00
-    { period: '2026-08', grossCents: 61500000n }  // C$ 615,000.00
-  ]);
+  const VACIO_monthlyGross: MonthlyGrossIncomeRow[] = [];
 
-  const MUESTRA_salesBook: SalesBookEntry[] = ([
-    {
-      id: 1,
-      series: 'A',
-      number: 1,
-      folio: 'A-000001',
-      docType: 'ticket',
-      at: '2026-08-31 08:30:00',
-      customerName: 'Cliente Mostrador',
-      customerDoc: null,
-      taxableBaseCents: 100000n,
-      exemptBaseCents: 0n,
-      taxCents: 15000n,
-      roundingCents: 0n,
-      totalCents: 115000n
-    },
-    {
-      id: 2,
-      series: 'A',
-      number: 2,
-      folio: 'A-000002',
-      docType: 'ticket',
-      at: '2026-08-31 09:15:00',
-      customerName: 'Pulpería La Bendición',
-      customerDoc: 'J0310000000001',
-      taxableBaseCents: 450000n,
-      exemptBaseCents: 50000n,
-      taxCents: 67500n,
-      roundingCents: 0n,
-      totalCents: 567500n
-    }
-  ]);
+  const VACIO_salesBook: SalesBookEntry[] = [];
 
-  const MUESTRA_inventoryValuation: InventoryValuationRow[] = ([
-    {
-      variantId: 1,
-      sku: 'CAF-PRE-150',
-      name: 'Café Presto 150g',
-      categoryName: 'Abarrotes',
-      stockMilli: 500000n, // 500 u
-      costAvgMicros: 80000000n, // C$ 80.00
-      totalValuationCents: 4000000n // C$ 40,000.00
-    },
-    {
-      variantId: 2,
-      sku: 'ARR-FAI-005',
-      name: 'Arroz Faisán 5 Lbs',
-      categoryName: 'Granos Básicos',
-      stockMilli: 320000n, // 320 u
-      costAvgMicros: 105000000n, // C$ 105.00
-      totalValuationCents: 3360000n // C$ 33,600.00
-    }
-  ]);
+  const VACIO_inventoryValuation: InventoryValuationRow[] = [];
 
-  const MUESTRA_profitMargins: ProfitMarginRow[] = ([
-    {
-      variantId: 1,
-      sku: 'CAF-PRE-150',
-      name: 'Café Presto 150g',
-      categoryName: 'Abarrotes',
-      qtySoldMilli: 45000n, // 45 u
-      revenueCents: 540000n, // C$ 5,400.00
-      costCents: 360000n,    // C$ 3,600.00
-      profitCents: 180000n,  // C$ 1,800.00
-      marginBp: 3333n        // 33.33%
-    },
-    {
-      variantId: 2,
-      sku: 'ARR-FAI-005',
-      name: 'Arroz Faisán 5 Lbs',
-      categoryName: 'Granos Básicos',
-      qtySoldMilli: 80000n, // 80 u
-      revenueCents: 1200000n, // C$ 12,000.00
-      costCents: 840000n,     // C$ 8,400.00
-      profitCents: 360000n,   // C$ 3,600.00
-      marginBp: 3000n         // 30.00%
-    }
-  ]);
+  const VACIO_profitMargins: ProfitMarginRow[] = [];
 
-  const MUESTRA_cashDiscrepancies: CashDiscrepancyRow[] = ([
-    {
-      shiftId: 1,
-      folio: 'TUR-000001',
-      cashierName: 'María Cajera',
-      openedAt: '2026-08-31 07:00:00',
-      closedAt: '2026-08-31 15:30:00',
-      diffCents: 0n,
-      diffUsd: 0n,
-      status: 'closed'
-    }
-  ]);
+  const VACIO_cashDiscrepancies: CashDiscrepancyRow[] = [];
 
-  const [reconciliation] = useState<ReportsReconciliation>({
-    salesTotalCents: 6227500n,
-    shiftCashTotalCents: 6227500n,
-    salesVsShiftDriftCents: 0n,
-    kardexSalesQtyMilli: 125000n,
-    kardexVsSalesDriftMilli: 0n,
-    ivaDriftCents: 0n
-  });
+  // La conciliación se calcula contra el libro. Declarar "cuadra" sin haberlo
+  // comprobado es la mentira más cara que puede contar un sistema contable.
+  const q_reconciliation = useIpcQuery(ReportReconciliationContract, undefined);
+  const reconciliation = q_reconciliation.data as ReportsReconciliation | null;
 
   // KPIs
   // Reportes reales desde SQLite; cada uno cae a su muestra sin puente IPC.
   const q_dailyTaxRows = useIpcQuery(ReportDailyTaxContract, {});
-  const dailyTaxRows = (q_dailyTaxRows.data ?? MUESTRA_dailyTaxRows) as typeof MUESTRA_dailyTaxRows;
+  const dailyTaxRows = (q_dailyTaxRows.data ?? VACIO_dailyTaxRows) as typeof VACIO_dailyTaxRows;
   const q_monthlyGross = useIpcQuery(ReportMonthlyIncomeContract, {});
-  const monthlyGross = (q_monthlyGross.data ?? MUESTRA_monthlyGross) as typeof MUESTRA_monthlyGross;
+  const monthlyGross = (q_monthlyGross.data ?? VACIO_monthlyGross) as typeof VACIO_monthlyGross;
   const q_inventoryValuation = useIpcQuery(ReportInventoryContract, undefined);
-  const inventoryValuation = (q_inventoryValuation.data ?? MUESTRA_inventoryValuation) as typeof MUESTRA_inventoryValuation;
+  const inventoryValuation = (q_inventoryValuation.data ?? VACIO_inventoryValuation) as typeof VACIO_inventoryValuation;
   const q_profitMargins = useIpcQuery(ReportMarginsContract, {});
-  const profitMargins = (q_profitMargins.data ?? MUESTRA_profitMargins) as typeof MUESTRA_profitMargins;
+  const profitMargins = (q_profitMargins.data ?? VACIO_profitMargins) as typeof VACIO_profitMargins;
   const q_salesBook = useIpcQuery(ReportSalesBookContract, {});
-  const salesBook = ((q_salesBook.data as { entries?: typeof MUESTRA_salesBook } | null)?.entries ??
-    MUESTRA_salesBook) as typeof MUESTRA_salesBook;
+  const salesBook = ((q_salesBook.data as { entries?: typeof VACIO_salesBook } | null)?.entries ??
+    VACIO_salesBook) as typeof VACIO_salesBook;
   const q_cashDiscrepancies = useIpcQuery(ReportCashDiscrepanciesContract, undefined);
   const cashDiscrepancies = (q_cashDiscrepancies.data ??
-    MUESTRA_cashDiscrepancies) as typeof MUESTRA_cashDiscrepancies;
+    VACIO_cashDiscrepancies) as typeof VACIO_cashDiscrepancies;
 
   const totalValuation = useMemo(() => {
     return inventoryValuation.reduce((acc, r) => acc + r.totalValuationCents, 0n);
@@ -261,17 +149,17 @@ export function Reports() {
         />
         <KpiCard
           title="Conciliación Ventas vs Caja"
-          value={reconciliation.salesVsShiftDriftCents === 0n ? 'C$ 0.00' : `C$ ${(Number(reconciliation.salesVsShiftDriftCents) / 100).toFixed(2)}`}
+          value={reconciliation ? `C$ ${(Number(reconciliation?.salesVsShiftDriftCents) / 100).toFixed(2)}` : '—'}
           subValue="Diferencia global"
-          badgeText={reconciliation.salesVsShiftDriftCents === 0n ? '0 DRIFT' : 'DRIFT'}
-          badgeVariant={reconciliation.salesVsShiftDriftCents === 0n ? 'success' : 'danger'}
+          badgeText={reconciliation ? (reconciliation?.salesVsShiftDriftCents === 0n ? 'Cuadra' : 'Descuadre') : 'Sin calcular'}
+          badgeVariant={reconciliation ? (reconciliation?.salesVsShiftDriftCents === 0n ? 'success' : 'danger') : 'neutral'}
         />
         <KpiCard
           title="Conciliación Ventas vs Kardex"
-          value={reconciliation.kardexVsSalesDriftMilli === 0n ? '0.000 u' : `${(Number(reconciliation.kardexVsSalesDriftMilli) / 1000).toFixed(3)} u`}
+          value={reconciliation ? `${(Number(reconciliation?.kardexVsSalesDriftMilli) / 1000).toFixed(3)} u` : '—'}
           subValue="Diferencia de unidades"
-          badgeText={reconciliation.kardexVsSalesDriftMilli === 0n ? '0 DRIFT' : 'DRIFT'}
-          badgeVariant={reconciliation.kardexVsSalesDriftMilli === 0n ? 'success' : 'danger'}
+          badgeText={reconciliation ? (reconciliation?.kardexVsSalesDriftMilli === 0n ? 'Cuadra' : 'Descuadre') : 'Sin calcular'}
+          badgeVariant={reconciliation ? (reconciliation?.kardexVsSalesDriftMilli === 0n ? 'success' : 'danger') : 'neutral'}
         />
       </div>
 
@@ -602,8 +490,8 @@ export function Reports() {
                 <Badge variant="success">OK (0 Drift)</Badge>
               </div>
               <div className="text-xs text-text-2 font-mono mt-1">
-                <div>Total Ventas: C$ {(Number(reconciliation.salesTotalCents) / 100).toFixed(2)}</div>
-                <div>Total Caja: C$ {(Number(reconciliation.shiftCashTotalCents) / 100).toFixed(2)}</div>
+                <div>Total Ventas: C$ {(Number(reconciliation?.salesTotalCents) / 100).toFixed(2)}</div>
+                <div>Total Caja: C$ {(Number(reconciliation?.shiftCashTotalCents) / 100).toFixed(2)}</div>
                 <div className="text-success font-semibold mt-1">Diferencia: C$ 0.00</div>
               </div>
             </div>
@@ -614,8 +502,8 @@ export function Reports() {
                 <Badge variant="success">OK (0 Drift)</Badge>
               </div>
               <div className="text-xs text-text-2 font-mono mt-1">
-                <div>Unidades Vendidas: {(Number(reconciliation.kardexSalesQtyMilli) / 1000).toFixed(3)} u</div>
-                <div>Kardex Salidas: {(Number(reconciliation.kardexSalesQtyMilli) / 1000).toFixed(3)} u</div>
+                <div>Unidades Vendidas: {(Number(reconciliation?.kardexSalesQtyMilli) / 1000).toFixed(3)} u</div>
+                <div>Kardex Salidas: {(Number(reconciliation?.kardexSalesQtyMilli) / 1000).toFixed(3)} u</div>
                 <div className="text-success font-semibold mt-1">Diferencia: 0.000 u</div>
               </div>
             </div>

@@ -23,54 +23,14 @@ import {
 
 } from '../../../core/customers';
 
-const INITIAL_CUSTOMERS: (Customer & { balanceCents: bigint })[] = [
-  {
-    id: 1,
-    uid: 'cust-1',
-    code: 'CLI-00101',
-    name: 'Comercial El Ahorro',
-    docType: 'RUC',
-    docNumber: 'J0310000333333',
-    taxRegime: 'general',
-    phone: '+505 8888-9999',
-    email: 'contacto@elahorro.com.ni',
-    address: 'Mercado Oriental, Managua',
-    creditLimitCents: 500000n, // C$ 5,000.00
-    creditDays: 30,
-    pointsBalance: 120n,
-    isActive: true,
-    balanceCents: 150000n // C$ 1,500.00 deudor
-  },
-  {
-    id: 2,
-    uid: 'cust-2',
-    code: 'CLI-00102',
-    name: 'Supermercado Familiar',
-    docType: 'RUC',
-    docNumber: 'J0310000444444',
-    taxRegime: 'general',
-    phone: '+505 2255-8888',
-    email: 'compras@familiar.com.ni',
-    address: 'Bello Horizonte, Managua',
-    creditLimitCents: 1000000n, // C$ 10,000.00
-    creditDays: 15,
-    pointsBalance: 350n,
-    isActive: true,
-    balanceCents: 0n // Al día
-  }
-];
-
 export function Customers() {
   const { userId, shiftId } = useSession();
   const { success, error } = useToast();
   // Clientes reales desde SQLite; sin puente cae a la lista de muestra.
-  const customersQuery = useIpcQuery(
-    CustomersListContract,
-    undefined,
-    INITIAL_CUSTOMERS as unknown as never
-  );
-  const customers = (customersQuery.data ??
-    INITIAL_CUSTOMERS) as unknown as (Customer & { balanceCents: bigint })[];
+  const customersQuery = useIpcQuery(CustomersListContract, undefined);
+  const customers = (customersQuery.data ?? []) as unknown as (Customer & {
+    balanceCents: bigint;
+  })[];
   const reloadCustomers = customersQuery.reload;
   const [searchQuery, setSearchQuery] = useState('');
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
