@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import Database from 'better-sqlite3';
@@ -58,12 +58,16 @@ function setupIpc(database: Database.Database) {
 }
 
 function createWindow(): void {
+  const iconPath = path.resolve(app.getAppPath(), 'build/icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 1024,
     minHeight: 680,
     title: 'Cuadra',
+    icon: iconPath,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -71,6 +75,8 @@ function createWindow(): void {
       sandbox: true
     }
   });
+
+  mainWindow.removeMenu();
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
@@ -84,6 +90,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   db = initializeDatabase();
   setupIpc(db);
   createWindow();

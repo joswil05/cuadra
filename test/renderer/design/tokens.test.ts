@@ -155,4 +155,15 @@ describe('Sistema de Diseño y Tokens (renderer/design)', () => {
     const shellModule = await import('../../../src/renderer/src/components/layout/Shell');
     expect(shellModule.Shell).toBeDefined();
   });
+
+  it('6. El selector explícito data-theme="light" prevalece sobre prefers-color-scheme: dark', () => {
+    const cssContent = fs.readFileSync(tokensCssPath, 'utf-8');
+    const mediaIdx = cssContent.indexOf('@media (prefers-color-scheme: dark)');
+    const lightIdx = cssContent.indexOf('[data-theme="light"]');
+    expect(mediaIdx).toBeGreaterThan(-1);
+    expect(lightIdx).toBeGreaterThan(-1);
+    // Debe estar posicionado después de la media query y la media query no debe capturar [data-theme="light"]
+    expect(cssContent).toContain(':root:not([data-theme="light"])');
+    expect(lightIdx).toBeGreaterThan(mediaIdx);
+  });
 });

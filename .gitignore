@@ -5,6 +5,8 @@ node_modules/
 out/
 dist/
 build/
+!build/icon.ico
+!build/icon.png
 *.tsbuildinfo
 
 # Base de datos local (dato del negocio, nunca al repositorio)

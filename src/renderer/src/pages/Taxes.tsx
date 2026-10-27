@@ -19,6 +19,17 @@ function money(v: bigint): string {
   return `${neg ? '-' : ''}C$ ${ent}.${(abs % 100n).toString().padStart(2, '0')}`;
 }
 
+function formatMes(periodo: string): string {
+  const [año, mes] = periodo.split('-');
+  const nombres = [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+  ];
+  const idx = parseInt(mes ?? '1', 10) - 1;
+  const mesNom = nombres[idx] ?? mes;
+  return `${mesNom} ${año}`;
+}
+
 /**
  * Pantalla fiscal, separada de Reportes a propósito.
  *
@@ -52,9 +63,12 @@ export function Taxes() {
     [filas]
   );
 
-  const serieMensual: ChartPoint[] = meses
-    .slice(-12)
-    .map((m) => ({ label: m.period, valueCents: m.grossCents }));
+  const serieMensual: ChartPoint[] = useMemo(() => {
+    return meses.slice(-12).map((m) => ({
+      label: formatMes(m.period),
+      valueCents: m.grossCents
+    }));
+  }, [meses]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -104,10 +118,22 @@ export function Taxes() {
       )}
 
       <section className="rounded-xl border border-border bg-surface p-4">
-        <h2 className="mb-1 text-sm font-semibold text-text-1">Ingreso bruto mensual</h2>
-        <p className="mb-3 text-xs text-text-3">
-          Base del IMI de la alcaldía y de la declaración mensual.
-        </p>
+        <div className="mb-3 flex items-start justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-text-1">Ingreso bruto mensual</h2>
+            <p className="text-xs text-text-3">
+              Base del IMI (1% de alcaldía) y de la declaración mensual ante la DGI.
+            </p>
+          </div>
+          {meses.length > 0 && (
+            <div className="text-right">
+              <span className="text-[11px] text-text-3">Mes en curso</span>
+              <div className="font-mono text-sm font-bold text-text-1">
+                {money(meses[meses.length - 1]?.grossCents ?? 0n)}
+              </div>
+            </div>
+          )}
+        </div>
         <DataState
           loading={qMes.loading}
           error={qMes.error}
@@ -117,7 +143,7 @@ export function Taxes() {
           emptyTitle="Sin meses cerrados todavía"
           emptyHint="Aparece cuando haya ventas registradas."
         >
-          {(serie) => <Chart points={serie} variant="bar" seriesName="Ingreso bruto mensual" />}
+          {(serie) => <Chart points={serie} variant="bar" height={180} seriesName="Ingreso bruto mensual" />}
         </DataState>
       </section>
 

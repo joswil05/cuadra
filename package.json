@@ -67,6 +67,7 @@
     "files": [
       "out/**/*",
       "db/migrations/**/*",
+      "build/icon.png",
       "package.json"
     ],
     "asarUnpack": [
@@ -75,6 +76,7 @@
     ],
     "npmRebuild": true,
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
